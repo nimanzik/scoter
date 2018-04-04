@@ -395,7 +395,7 @@ techniques using synthetic data. *J. Geophys. Res.*, 110(B4). B04304.
 Probabilistic earthquake location in 3D and layered models. In Thurber, C. and
 Rabinowitz, N., editors, *Advances in Seismic Event Location*, volume 18 of
 *Modern Approaches in Geophysics*, pages 101-134. Springer Netherlands.
-- Nooshiri, N., Saul, J., Heimann, S., Tilmann, F., and Dahm, T. (2016).
+- Nooshiri, N., Saul, J., Heimann, S., Tilmann, F., and Dahm, T. (2017).
 Revision of earthquake hypocentre locations in global bulletin data sets using
 source-specific station terms. *Geophys. J. Int*, 208(2):589–602, https://doi.org/10.1093/gji/ggw405
 - Richards-Dinger, K. B. and Shearer, P. M. (2000). Earthquake locations in
