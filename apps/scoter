@@ -1,0 +1,474 @@
+#!/usr/bin/env python
+
+from __future__ import print_function
+import argparse
+import glob
+import logging
+import os.path as op
+import sys
+
+import scoter
+from scoter.core import read_config, go
+from scoter.log_util import custom_logger
+from scoter.meta import FileNotFound, PathAlreadyExists, ScoterError
+from scoter.pre_exec import dump_nlloc_obs_all
+from scoter.post_exec import harvest, export_events, export_residuals,\
+    export_static, export_ssst
+
+
+progname = 'scoter'
+
+# Create logger
+logger = custom_logger(name=progname)
+
+
+def d2u(d):
+    if isinstance(d, dict):
+        return dict((k.replace('-', '_'), v) for (k, v) in d.items())
+    else:
+        return d.replace('-', '_')
+
+
+subcommand_descriptions = {
+    'init': 'print example configuration',
+    'dump-obs': 'save bulletin files in different formats into '
+                'NLLOC_OBS phase file format',
+    'list-steps': 'list named location steps in {} syntax'.format(progname),
+    'go': 'run {} multiple-event location'.format(progname),
+    'harvest': 'run harvesting to cache {} results'.format(progname),
+    'export-events': 'export resulting hypocenters',
+    'export-residuals': 'export travel-time residuals',
+    'export-static': 'export static station terms',
+    'export-ssst': 'export source-specific station terms'}
+
+
+subcommand_usages = {
+    'init': 'init <filename> [options]',
+    'dump-obs': 'dump-obs <bulletin-files> --format=<format> '
+                '--output-dir=<dir> --events-path=<filename> [options]',
+    'list-steps': 'list-steps [options]',
+    'go': 'go <configfile> --steps=<steps> [options]',
+    'harvest': 'harvest <rundir> [options]',
+    'export-events': 'export-events <rundir> --step=<step> '
+                     '[--format=<fmt> --output=<filename>]',
+    'export-residuals': 'export-residuals <rundir> --station=<station> '
+                        '--phase=<phase> [--output=<filename>]',
+    'export-static': 'export-static <rundir> [--output=<filename>]',
+    'export-ssst': 'export-ssst <rundir> --station=<station> '
+                   '--phase=<phase> [--output=<filename>]'}
+
+
+subcommand = subcommand_descriptions.keys()
+
+usage_tdata = d2u(subcommand_descriptions)
+usage_tdata['progname'] = progname
+
+usage = '''{progname} <subcommand> <arguments> [options]
+
+Subcommands:
+
+    init               {init}
+    dump-obs           {dump_obs}
+    list-steps         {list_steps}
+    go                 {go}
+    harvest            {harvest}
+    export-events      {export_events}
+    export-residuals   {export_residuals}
+    export-static      {export_static}
+    export-ssst        {export_ssst}
+
+To get further help and a list of available options for any subcommand run:
+
+    {progname} <subcommand> --help
+'''.format(**usage_tdata)
+
+
+def setup_logging(levelname='info'):
+    levels = {
+        'debug': logging.DEBUG,
+        'info': logging.INFO,
+        'warning': logging.WARNING,
+        'warn': logging.WARN,
+        'error': logging.ERROR,
+        'critical': logging.CRITICAL}
+
+    logger.setLevel(levels[levelname])
+
+
+def add_common_options(parser):
+    parser.add_argument(
+        '--loglevel',
+        metavar='LOGLEVEL', default='info',
+        choices=('critical', 'error', 'warning', 'info', 'debug'),
+        help='set logger level to "critical", "error", "warning", "info", '
+             'or "debug" (default: info).')
+
+    parser.add_argument(
+        '--no-progressbar',
+        dest='show_progress', action='store_false', default=True,
+        help='don\'t show progress bar to display the progress of '
+             'running operation.')
+
+
+# ---------- Create the top-level parser --------------------------------------
+
+parser = argparse.ArgumentParser(
+    prog=progname,
+    description='multiple-event seismic location by using '
+                'static and source-specific station terms')
+
+# Subcommands parser
+subparsers = parser.add_subparsers(
+    title='subcommands',
+    description='valid subcommands')
+
+
+def create_subcommand_parser(subcommand, common_opts=True):
+    parser_scmd = subparsers.add_parser(
+        subcommand,
+        description=subcommand_descriptions.get(subcommand),
+        usage='{0} {1}'.format(progname, subcommand_usages.get(subcommand)),
+        formatter_class=argparse.RawDescriptionHelpFormatter)
+
+    if common_opts:
+        add_common_options(parser_scmd)
+
+    return parser_scmd
+
+
+# ---------- Subcommand "init" ------------------------------------------------
+
+def command_init(args):
+    p = op.join(scoter.__path__[0], 'data/config.sf')
+    s = scoter.__loader__.get_data(p)
+
+    with open(args.filename, 'w') as f:
+        f.write(s)
+
+
+parser_init = create_subcommand_parser('init', common_opts=False)
+
+parser_init.add_argument(
+    'filename',
+    help='specifies the filename to write an example configuration.')
+
+parser_init.set_defaults(func=command_init)
+
+
+# ---------- Subcommand "dump-obs" --------------------------------------------
+
+def command_dump_obs(args):
+    setup_logging(levelname=args.loglevel)
+
+    paths = getattr(args, 'bulletin-files').split(',')
+    bulletin_files = []
+    for path in paths:
+        bulletin_files.extend(glob.glob(path))
+
+    try:
+        dump_nlloc_obs_all(
+            bulletin_files,
+            args.format,
+            args.output_dir,
+            args.events_path,
+            delimiter_str=args.delimiter_str,
+            prefix=args.prefix,
+            suffix=args.suffix,
+            force=args.force,
+            show_progress=args.show_progress)
+
+    except (PathAlreadyExists, ScoterError) as e:
+        logger.warn(e)
+
+
+parser_dump_obs = create_subcommand_parser('dump-obs', common_opts=True)
+
+# Positional args
+parser_dump_obs.add_argument('bulletin-files', help=argparse.SUPPRESS)
+
+# Required named args
+named_dump_obs = parser_dump_obs.add_argument_group('required named arguments')
+
+named_dump_obs.add_argument(
+    '--format',
+    required=True, metavar='FORMAT', choices=('QuakeML', 'Geofon'),
+    help='assume input files are of given FORMAT. Choices: '
+         '"QuakeML", "Geofon".')
+
+named_dump_obs.add_argument(
+    '--output-dir',
+    dest='output_dir', required=True, metavar='DIR',
+    help='set output directory to DIR to save NonLinLoc phase '
+         'files (NLLOC_OBS.')
+
+named_dump_obs.add_argument(
+    '--events-path',
+    '--event-path',
+    dest='events_path', required=True, metavar='FILENAME',
+    help='write pyrocko events to FILENAME.')
+
+# Optional args
+parser_dump_obs.add_argument(
+    '--delimiter-str',
+    '--delimiter',
+    dest='delimiter_str', metavar='DELIMITER',
+    help='network code and station code separator character. Used to join '
+         'network and station codes when NLLOC_OBS files are written.')
+
+parser_dump_obs.add_argument(
+    '--prefix',
+    default="",
+    help='if specified, all output filenames will begin with that prefix; '
+         'otherwise, there will be no prefix.')
+
+parser_dump_obs.add_argument(
+    '--suffix',
+    default='.nll',
+    help='if specified, all output filenames will end with that suffix; '
+         'otherwise, a default prefix (.nll) is used.')
+
+parser_dump_obs.add_argument(
+    '--force',
+    action='store_true',
+    help='overwrite existing files (i.e. pyrocko events, NLLOC_OBS files).')
+
+parser_dump_obs.set_defaults(func=command_dump_obs)
+
+
+# ---------- Subcommand "list-steps" ------------------------------------------
+
+def command_list_steps(args):
+    s = ''' Step     Description
+ ----     -----------
+  A       single-event location (without any station terms)
+  B       static station terms location
+  C       source-specific station terms location
+'''
+    print(s)
+
+
+parser_list_steps = create_subcommand_parser('list-steps', common_opts=False)
+parser_list_steps.set_defaults(func=command_list_steps)
+
+
+# ---------- Subcommand "go" --------------------------------------------------
+
+def command_go(args):
+    setup_logging(levelname=args.loglevel)
+    cfg = read_config(args.configfile)
+    steps = [x.strip().upper() for x in args.steps.split(',')]
+    go(
+        cfg, steps, force=args.force, nparallel=args.nparallel,
+        show_progress=args.show_progress)
+
+
+parser_go = create_subcommand_parser('go', common_opts=True)
+
+# Positional args
+parser_go.add_argument('configfile', help=argparse.SUPPRESS)
+
+# Required named args
+named_go = parser_go.add_argument_group('required named arguments')
+named_go.add_argument(
+    '--steps',
+    required=True, metavar='STEPS',
+    help='comma separated list of location steps in {progname} syntax. '
+         'Run "{progname} list-steps" for description of named location '
+         'steps.'.format(progname=progname))
+
+# Optional args
+parser_go.add_argument(
+    '--parallel',
+    dest='nparallel', type=int, default=1, metavar='NPARALLEL',
+    help='set number of events to process in parallel. '
+         'If -1 is given all processors are used (default: 1).')
+
+parser_go.add_argument(
+    '--force',
+    action='store_true',
+    help='overwrite existing subdirectories of main rundir.')
+
+parser_go.set_defaults(func=command_go)
+
+
+# ---------- Subcommand "harvest" ---------------------------------------------
+
+def command_harvest(args):
+    setup_logging(levelname=args.loglevel)
+    try:
+        harvest(
+            args.rundir, force=args.force, nparallel=args.nparallel,
+            show_progress=args.show_progress)
+    except PathAlreadyExists as e:
+        logger.warn(e)
+
+
+parser_harvest = create_subcommand_parser('harvest', common_opts=True)
+
+# Positional args
+parser_harvest.add_argument('rundir', help=argparse.SUPPRESS)
+
+# Optional args
+parser_harvest.add_argument(
+    '--force',
+    action='store_true',
+    help='overwrite existing harvest directory.')
+
+parser_harvest.add_argument(
+    '--parallel',
+    dest='nparallel', type=int, default=1, metavar='NPARALLEL',
+    help='set number of events to process in parallel. '
+         'If -1 is given all processors are used (default: 1).')
+
+parser_harvest.set_defaults(func=command_harvest)
+
+
+# ---------- Subcommand "export-static" ---------------------------------------
+
+def add_option_output(parser):
+    parser.add_argument(
+        '--output',
+        dest='filename', metavar='FILENAME', help='write output to FILENAME.')
+
+
+def command_export_static(args):
+    try:
+        export_static(args.rundir, args.filename)
+    except FileNotFound as e:
+        logger.warn(e)
+
+
+parser_export_static = create_subcommand_parser(
+    'export-static', common_opts=False)
+
+# Positional args
+parser_export_static.add_argument('rundir', help=argparse.SUPPRESS)
+
+# Optional args
+add_option_output(parser_export_static)
+
+parser_export_static.set_defaults(func=command_export_static)
+
+
+# ---------- Subcommand "export-ssst" -----------------------------------------
+
+def command_export_ssst(args):
+    try:
+        export_ssst(
+            args.rundir, args.station_label, args.phase_label, args.filename)
+    except FileNotFound as e:
+        logger.warn(e)
+
+
+parser_export_ssst = create_subcommand_parser(
+    'export-ssst', common_opts=False)
+
+# Positional args
+parser_export_ssst.add_argument('rundir', help=argparse.SUPPRESS)
+
+# Required named args
+named_ssst = parser_export_ssst.add_argument_group('required named arguments')
+
+named_ssst.add_argument(
+    '--station',
+    required=True, dest='station_label', metavar='STATIONLABEL',
+    help='export ssst values for given STATIONLABEL')
+
+parser_export_ssst.add_argument(
+    '--phase',
+    required=True, dest='phase_label', metavar='PHASELABEL',
+    help='export ssst values for given PHASELABEL.')
+
+# Optional args
+add_option_output(parser_export_ssst)
+
+parser_export_ssst.set_defaults(func=command_export_ssst)
+
+
+# ---------- Subcommand "export-residual" -------------------------------------
+
+def command_export_residuals(args):
+    try:
+        export_residuals(
+            args.rundir, args.station_label, args.phase_label, args.filename)
+    except:   # noqa
+        logger.warn('found no residual for given {}-{} pair'.format(
+            args.station_label, args.phase_label))
+
+
+parser_export_residuals = create_subcommand_parser(
+    'export-residuals', common_opts=False)
+
+# Positional args
+parser_export_residuals.add_argument('rundir', help=argparse.SUPPRESS)
+
+# Required named args
+named_residual = parser_export_residuals.add_argument_group(
+    'required named arguments')
+
+named_residual.add_argument(
+    '--station',
+    required=True, dest='station_label', metavar='STATIONLABEL',
+    help='export travel-time residuals for given STATIONLABEL.')
+
+named_residual.add_argument(
+    '--phase',
+    required=True, dest='phase_label', metavar='PHASELABEL',
+    help='export travel-time residuals for given PHASELABEL.')
+
+# Optional args
+add_option_output(parser_export_residuals)
+
+parser_export_residuals.set_defaults(func=command_export_residuals)
+
+
+# ---------- Subcommand "export-events" ---------------------------------------
+
+def command_export_events(args):
+    try:
+        export_events(args.rundir, args.step, args.fmt, args.filename)
+    except (ScoterError, FileNotFound) as e:
+        logger.warn(e)
+
+
+parser_export_events = create_subcommand_parser(
+    'export-events', common_opts=False)
+
+# Positional args
+parser_export_events.add_argument('rundir', help=argparse.SUPPRESS)
+
+# Required named args
+named_events = parser_export_events.add_argument_group(
+    'required named arguments')
+
+named_events.add_argument(
+    '--step',
+    required=True, dest='step', metavar='LOCATIONSTEP',
+    help='location step in {progname} syntax. Run "{progname} list-steps" '
+         'for description of named location steps.'.format(progname=progname))
+
+# Optional args
+parser_export_events.add_argument(
+    '--format',
+    dest='fmt', metavar='FORMAT', default='columns',
+    choices=('pyrocko', 'columns'),
+    help='export events in given FORMAT. Choices: "columns", "pyrocko" '
+         '(default: columns).')
+
+add_option_output(parser_export_events)
+
+parser_export_events.set_defaults(func=command_export_events)
+
+
+if __name__ == '__main__':
+
+    if len(sys.argv) < 2:
+        sys.exit('Usage: {}'.format(usage))
+
+    command = list(sys.argv)[1]
+
+    if command in ('--help', '-h', 'help'):
+        sys.exit('Usage: {}'.format(usage))
+    else:
+        args = parser.parse_args()
+        args.func(args)
