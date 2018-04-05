@@ -14,6 +14,15 @@ Multiple-event location by using static and source-specific station correction t
 * [progressbar2](https://pypi.python.org/pypi/progressbar2)
 
 
+## Download and Installation
+
+```bash
+git clone https://gitext.gfz-potsdam.de/nooshiri/scoter.git
+cd scoter
+sudo python setup.py install
+```
+
+
 ## Relocation method
 
 **SCOTER** implements the so-called shrinking-box source-specific station terms
