@@ -28,7 +28,7 @@ cd scoter
 sudo python setup.py install
 ```
 
-#### How to install NonLinLoc backend?
+#### How to install [NonLinLoc](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git) backend?
 
 ```bash
 cd ~/src/   # or wherever you keep your source packages
