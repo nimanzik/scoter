@@ -8,35 +8,28 @@ Multiple-event location by using static and source-specific station correction t
 * Python (=> 2.7, < 3, with development headers)
 * Numpy (>= 1.13.1)
 * Scipy (>= 0.19.1)
-* [Pyrocko](http://pyrocko.org/) (== v2017.11.22)
 * [PyYaml](http://pyyaml.org/wiki/PyYAML) (>= 3.11)
-* [NonLinLoc](https://gitlab.com/nimanshr/stater-nonlinloc) (== v7.00.0)
 * [progressbar2](https://pypi.python.org/pypi/progressbar2)
+* [Pyrocko](http://pyrocko.org/) (== v2017.11.22)
+* [NonLinLoc](https://gitlab.com/nimanshr/stater-nonlinloc) (== v7.00.0)
 
 
 ## Download and Installation
 
-Use git to download the software package to install.
+1. Install [Pyrocko](https://pyrocko.org/):  
+    See Pyrocko installation page [here](https://pyrocko.org/docs/current/install/).  
 
+2. Install NonLinLoc:  
+    See NonLinLoc repository that is modified and packaged as SCOTER backend [here](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git).  
 
-#### How to install SCOTER?
+3. Install SCOTER and the rest of dependencies:  
 
-```bash
-cd ~/src/   # or wherever you keep your source packages
-git clone https://gitext.gfz-potsdam.de/nooshiri/scoter.git
-cd scoter
-sudo python setup.py install
-```
-
-#### How to install [NonLinLoc](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git) backend?
-
-```bash
-cd ~/src/   # or wherever you keep your source packages
-git clone https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git
-cd scoter-nonlinloc
-cd src
-sudo make -R all
-```
+    ```bash
+    cd ~/src/   # or wherever you keep your source packages
+    git clone https://gitext.gfz-potsdam.de/nooshiri/scoter.git
+    cd scoter
+    sudo python setup.py install
+    ```
 
 
 ## Relocation method
