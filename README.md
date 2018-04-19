@@ -16,10 +16,26 @@ Multiple-event location by using static and source-specific station correction t
 
 ## Download and Installation
 
+Use git to download the software package to install.
+
+
+#### How to install SCOTER?
+
 ```bash
+cd ~/src/   # or wherever you keep your source packages
 git clone https://gitext.gfz-potsdam.de/nooshiri/scoter.git
 cd scoter
 sudo python setup.py install
+```
+
+#### How to install NonLinLoc backend?
+
+```bash
+cd ~/src/   # or wherever you keep your source packages
+git clone https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git
+cd scoter-nonlinloc
+cd src
+sudo make -R all
 ```
 
 
@@ -52,6 +68,7 @@ Optionally, based on the initial locations, a set of static station terms can be
 calculated for each station and phase (*P* and/or *S*) and then used as a
 starting point for the SSST calculation.
 
+
 ## The NonLinLoc backend
 
 The original SSST algorithm is adopted for probabilistic, non-linear, global-search
@@ -67,6 +84,7 @@ iterative station terms calculation. The weights are defined according to the
 inter-event distance and residual performance. These criteria are revisited
 after each location iteration.
 
+
 ### Distance weight
 
 To further reduce the effect of the unmodelled velocity structure outside the
@@ -77,6 +95,7 @@ W_{i}^{d}=\left(  max\left\lbrace 0, 1-\left( \dfrac{d_{i}}{R_{max}}\right)^3 \r
 ```
 where $`d_i`$ is the inter-event distance between target and neighbouring events,
 and $`R_{max}`$ is the cut-off distance.
+
 
 ### Effective distance weight
 
