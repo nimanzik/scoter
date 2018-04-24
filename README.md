@@ -5,13 +5,13 @@ Multiple-event location by using static and source-specific station correction t
 
 ## Dependencies
 
-* Python (=> 2.7, < 3, with development headers)
+* Python (>= 2.7, < 3, with development headers)
 * Numpy (>= 1.13.1)
 * Scipy (>= 0.19.1)
 * [PyYaml](http://pyyaml.org/wiki/PyYAML) (>= 3.11)
 * [progressbar2](https://pypi.python.org/pypi/progressbar2)
-* [Pyrocko](http://pyrocko.org/) (== v2017.11.22)
-* [NonLinLoc](https://gitlab.com/nimanshr/stater-nonlinloc) (== v7.00.0)
+* [Pyrocko](http://pyrocko.org/) (>= 2017.11.22)
+* [NonLinLoc](https://gitlab.com/nimanshr/stater-nonlinloc) (== 7.00.0)
 
 
 ## Download and Installation
