@@ -32,7 +32,7 @@ Multiple-event location by using static and source-specific station correction t
     ```
 
 
-## Relocation method
+## Relocation Method
 
 **SCOTER** implements the so-called shrinking-box source-specific station terms
 (SSST) technique (Richards-Dinger & Shearer, 2000; Lin & Shearer, 2005) to
@@ -62,7 +62,7 @@ calculated for each station and phase (*P* and/or *S*) and then used as a
 starting point for the SSST calculation.
 
 
-## The NonLinLoc backend
+## The NonLinLoc Backend
 
 The original SSST algorithm is adopted for probabilistic, non-linear, global-search
 location method implemented in the software package NonLinLoc (Lomax et al., 2000).
@@ -70,7 +70,7 @@ The **SCOTER** tool relies on this backend (external program) to do the actual e
 location part of the calculation (see Nooshiri et al. (2017) for more details).
 
 
-## New weighting and re-weighting scheme
+## New Weighting and Re-weighting Scheme
 
 **SCOTER** allows each neighbouring event to be directly weighted during the
 iterative station terms calculation. The weights are defined according to the
@@ -78,7 +78,7 @@ inter-event distance and residual performance. These criteria are revisited
 after each location iteration.
 
 
-### Distance weight
+### Distance Weight
 
 To further reduce the effect of the unmodelled velocity structure outside the
 source region, residuals for neighbouring events located at far distances can be
@@ -90,7 +90,7 @@ where $`d_i`$ is the inter-event distance between target and neighbouring events
 and $`R_{max}`$ is the cut-off distance.
 
 
-### Effective distance weight
+### Effective Distance Weight
 
 In order to more efficiently reduce the velocity heterogeneity effects for
 events with large separation distances, each nearby event can be weighted as a
@@ -116,7 +116,7 @@ the target event ray take-off direction.
 </p>
 
 
-### Residual outliers rejection
+### Residual Outliers Rejection
 
 **SCOTER** can detect the outliers in the travel-time residuals distribution and
 remove them from the residuals list when calculating station terms:
@@ -133,7 +133,7 @@ robust measure of the spread of a distribution, which is equal to the standard
 deviation for Gaussian distribution.
 
 
-## Location steps
+## Location Steps
 
 **SCOTER** can be run for single-event relocation (Single) without any station
 terms, static station terms relocation (Static), and source-specific station
@@ -150,7 +150,7 @@ Therefore, any desired relocation step(s) can be re-run, for instance, to play
 around with different configurations.
 
 
-# Command line examples
+## Command Line Examples
 
 ```shell
 # To get further help and a list of available options and subcommand:
@@ -165,7 +165,7 @@ scoter go myconfig.sf --steps=A,B,C --parallel=8
 ```
 
 
-## Example configuration file
+## Example Configuration File
 
 ```yaml
 %YAML 1.1
@@ -406,6 +406,13 @@ nlloc_config: !gp.NLLocConfig
 # End of the config file
 # -----------------------------------------------------------------------------
 ```
+
+
+## SCOTER Overview Poster (EGU 2018)
+
+<p align="center">
+<img src="images/Nooshiri_EGU2018_15263.png" width="1200">
+</p>
 
 
 ## References
