@@ -1,7 +1,12 @@
 from __future__ import division
 import math
+import os.path as op
 
 import numpy as np
+
+from shapely.geometry.point import Point
+
+from .util import data_file, load_pickle
 
 
 KM2M = 1000.
@@ -249,13 +254,6 @@ def geodetic_to_ecef(lat, lon, alt):
     return (X, Y, Z)
 
 
-def cube_root(x):
-    if x >= 0.:
-        return pow(x, 1./3.)
-    else:
-        return -1. * pow(abs(x), 1./3.)
-
-
 def ecef_to_geodetic(X, Y, Z):
     """
     Convert Earth-Centered, Earth-Fixed (ECEF) Cartesian coordinates to
@@ -300,7 +298,7 @@ def ecef_to_geodetic(X, Y, Z):
     F = 54. * b2 * Z2
     G = r2 + (1.-e2)*Z2 - (e2*E2)
     C = (e4 * F * r2) / (G**3)
-    S = cube_root(1. + C + np.sqrt(C**2 + 2.*C))
+    S = np.cbrt(1. + C + np.sqrt(C**2 + 2.*C))
     P = F / (3. * (S+(1./S)+1.)**2 * G**2)
     Q = np.sqrt(1. + (2.*e4*P))
 
@@ -319,6 +317,26 @@ def ecef_to_geodetic(X, Y, Z):
     lon = np.arctan2(Y, X)
 
     return (np.degrees(lat), np.degrees(lon), alt)
+
+
+class FlinnEngdahl(object):
+    fe_seismic_regions_filename = data_file('FlinnEngdahl_seismic.pickle')
+
+    def __init__(self):
+        self.fe_seismic_regions = load_pickle(self.fe_seismic_regions_filename)
+
+    def get_seismic_region_id(self, lat, lon):
+        if lat < -90. or lat > 90.:
+            raise ValueError
+
+        if lon < -180. or lon > 180.:
+            raise ValueError
+
+        p = Point(lon, lat)
+        for srid, srpoly_list in self.fe_seismic_regions.items():
+            for srpoly in srpoly_list:
+                if p.within(srpoly):
+                    return srid
 
 
 __all__ = """
