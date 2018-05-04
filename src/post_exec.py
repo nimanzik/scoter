@@ -1,5 +1,4 @@
 from collections import defaultdict, namedtuple, OrderedDict
-import cPickle as pickle
 import os.path as op
 from os.path import join as pjoin
 import shutil
@@ -14,22 +13,12 @@ from .core import NAMED_STEPS, HYP_FILE_EXTENSION
 from .ie.nlloc import load_nlloc_hyp
 from .meta import FileNotFound, PathAlreadyExists, ScoterError
 from .parmap import parstarmap
+from .util import dump_pickle, load_pickle
 
 
 KM2M = 1000.
 
 np.set_printoptions(nanstr='NaN')
-
-
-def dump_pickle(obj, fn):
-    ensuredirs(fn)
-    with open(fn, 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
-
-
-def load_pickle(fn):
-    with open(fn, 'rb') as f:
-        return pickle.load(f)
 
 
 def load_config(dirname):

@@ -1,5 +1,10 @@
+import cPickle as pickle
+import os.path as op
+from os.path import join as pjoin
+
 import numpy as np
 
+from pyrocko.util import ensuredirs
 import progressbar as pb_mod
 
 
@@ -32,6 +37,21 @@ def progressbar(label=None, max_value=None, redirect_stdout=True):
         redirect_stdout=redirect_stdout)
 
     return pbar
+
+
+def data_file(fn):
+    return pjoin(op.split(__file__)[0], 'data', fn)
+
+
+def dump_pickle(obj, fn):
+    ensuredirs(fn)
+    with open(fn, 'wb') as f:
+        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
+
+
+def load_pickle(fn):
+    with open(fn, 'rb') as f:
+        return pickle.load(f)
 
 
 __all__ = """
