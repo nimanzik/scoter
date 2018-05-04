@@ -34,8 +34,12 @@ setup(
         'scipy>=0.19.1',
         'pyrocko>=2017.11.22',
         'pyyaml>=3.11',
-        'progressbar2>=3.34.2'],
+        'progressbar2>=3.34.2',
+        'shapely>=1.6.4'],
     packages=[packname] + subpacknames,
     package_dir={'scoter': 'src'},
     scripts=['apps/scoter'],
-    package_data={packname: ['data/config.sf']})
+    package_data={
+        packname: [
+            'data/config.sf',
+            'data/FlinnEngdahl_seismic.pickle']})
