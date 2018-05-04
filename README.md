@@ -11,7 +11,7 @@ Multiple-event location by using static and source-specific station correction t
 * [PyYaml](http://pyyaml.org/wiki/PyYAML) (>= 3.11)
 * [progressbar2](https://pypi.python.org/pypi/progressbar2)
 * [Pyrocko](http://pyrocko.org/) (>= 2017.11.22)
-* [NonLinLoc](https://gitlab.com/nimanshr/stater-nonlinloc) (== 7.00.0)
+* [NonLinLoc](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc) (== 7.00.0)
 
 
 ## Download and Installation
