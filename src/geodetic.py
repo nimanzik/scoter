@@ -319,10 +319,10 @@ def ecef_to_geodetic(X, Y, Z):
 
 
 class FlinnEngdahl(object):
-    fe_seismic_regions_filename = data_file('FlinnEngdahl_seismic.pickle')
+    seismic_regions_filename = data_file('FlinnEngdahl_seismic.pickle')
 
     def __init__(self):
-        self.fe_seismic_regions = load_pickle(self.fe_seismic_regions_filename)
+        self.seismic_regions = load_pickle(self.seismic_regions_filename)
 
     def get_seismic_region_id(self, lat, lon):
         if lat < -90. or lat > 90.:
@@ -332,7 +332,7 @@ class FlinnEngdahl(object):
             raise ValueError
 
         p = Point(lon, lat)
-        for srid, srpoly_list in self.fe_seismic_regions.items():
+        for srid, srpoly_list in self.seismic_regions.items():
             for srpoly in srpoly_list:
                 if p.within(srpoly):
                     return srid
