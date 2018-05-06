@@ -284,7 +284,7 @@ def load_nlloc_hyp(
         phase = Phase(value=plabel)
         tpick = TimeQuantity(value=tpick)
 
-        dummy_id = 'smi:NLL/{}'.format(i)
+        dummy_id = 'smi:local/{}'.format(i)
 
         # Pick attribute
         pick = Pick(
@@ -306,7 +306,7 @@ def load_nlloc_hyp(
 
     # ------- Create quakeml.Event object -------
 
-    public_id = 'smi:NLL/{}'.format(event_name or 'NotSet')
+    public_id = 'smi:local/{}'.format(event_name or 'NotSet')
     origin = Origin(
         public_id=public_id, time=torig, latitude=lat, longitude=lon,
         depth=depth, arrival_list=arrival_list,
@@ -323,7 +323,7 @@ def load_nlloc_hyp(
         arrival_dict=arrival_dict)
 
     event_parameters = EventParameters(
-        public_id='smi:NLL/EventParameters',
+        public_id='smi:local/EventParameters',
         event_list=[event])
 
     qml = QuakeML(event_parameters=event_parameters)
