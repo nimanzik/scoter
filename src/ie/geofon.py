@@ -174,7 +174,7 @@ def load_geofon_hyp(filename):
         public_id=event_public_id, origin_list=[origin], pick_list=pick_list)
 
     event_parameters = EventParameters(
-        public_id='smi:NLL/EventParameters',
+        public_id='smi:local/EventParameters',
         event_list=[event])
 
     qml = QuakeML(event_parameters=event_parameters)
