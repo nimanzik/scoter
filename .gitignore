@@ -1,5 +1,4 @@
 *.pyc
-example/nepal/
 build/
 dist/
 scoter.egg-info
