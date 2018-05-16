@@ -104,6 +104,7 @@ class EventType(StringChoice):
         'nuclear explosion',
         'induced or triggered event',
         'rock burst',
+        'rockburst',
         'reservoir loading',
         'fluid injection',
         'fluid extraction',
