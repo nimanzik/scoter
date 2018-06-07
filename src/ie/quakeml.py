@@ -13,6 +13,14 @@ guts_prefix = 'gp'
 logger = custom_logger(__name__)
 
 
+class QuakeMLError(Exception):
+    pass
+
+
+class OriginError(QuakeMLError):
+    pass
+
+
 def one_element_or_none(l):
     if len(l) == 1:
         return l[0]
@@ -548,11 +556,19 @@ class Origin(Object):
     evaluation_status = EvaluationStatus.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
-    def position_values(self):
-        lat = self.latitude.value
-        lon = self.longitude.value
-        depth = self.depth.value
-        return lat, lon, depth
+    def get_pyrocko_event(self):
+        if self.creation_info:
+            catalog = self.creation_info.agencyID or self.creation_info.author
+        else:
+            catalog = None
+
+        return model.Event(
+            lat=self.latitude.value,
+            lon=self.longitude.value,
+            depth=self.depth.value,
+            time=self.time.value,
+            region=self.region,
+            catalog=catalog)
 
 
 class Event(Object):
@@ -589,13 +605,16 @@ class Event(Object):
     def pyrocko_event(self):
         """Considers only the *preferred* origin and magnitude"""
 
-        if self._pyrocko_event is None:
-            lat, lon, depth = self.preferred_origin.position_values()
-            otime = self.preferred_origin.time.value
+        if not self.preferred_origin:
+            raise OriginError('no origin class set: {}'.format(self.name))
 
-            self._pyrocko_event = model.Event(
-                name=self.name, lat=lat, lon=lon, time=otime, depth=depth,
-                magnitude=getattr(self.preferred_magnitude, 'mag.value', None))
+        if self._pyrocko_event is None:
+            event = self.preferred_origin.get_pyrocko_event()
+            setattr(event, 'name', self.name)
+            magnitude = getattr(self.preferred_magnitude.mag, 'value', None)
+            setattr(event, 'magnitude', magnitude)
+
+            self._pyrocko_event = event
 
         return self._pyrocko_event
 
