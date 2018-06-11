@@ -137,6 +137,21 @@ def gc_azimuth(lat1, lon1, lat2, lon2):
 
 
 def gc_azibazi(lat1, lon1, lat2, lon2):
+    """
+    Azimuth and back-azimuth between two points on spherical earth.
+    
+    Parameters
+    ----------
+    lat1, lon1: float
+        Latitude and longitude of the first point in [deg].
+    lat2, lon2: float
+        Latitude and longitude of the second point in [deg].
+        
+    Returns
+    -------
+    tuple, float
+        Azimuth and back-azimuth in [deg], respectively.
+    """
 
     azi = gc_azimuth(lat1, lon1, lat2, lon2)
 
@@ -324,7 +339,7 @@ class FlinnEngdahl(object):
     def __init__(self):
         self.seismic_regions = load_pickle(self.seismic_regions_filename)
 
-    def get_seismic_region_id(self, lat, lon):
+    def seismic_region_id(self, lat, lon):
         if lat < -90. or lat > 90.:
             raise ValueError
 
@@ -346,4 +361,5 @@ __all__ = """
     ellipsoid_distance
     geodetic_to_ecef
     ecef_to_geodetic
+    FlinnEngdahl
 """.split()
