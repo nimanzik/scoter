@@ -22,7 +22,7 @@ from .ie.quakeml import QuakeML   # noqa
 from .location import nlloc_runner
 from .log_util import custom_logger
 from .parmap import parstarmap
-from .util import loglinspace
+from .util import dump_pickle, loglinspace
 from .meta import expand_template, HasPaths, FileNotFound, Path, PhaseLabel,\
     Station, Target, ScoterError
 
@@ -764,11 +764,6 @@ class Config(HasPaths):
         event_list = list(chain.from_iterable(cat))
 
         return event_list
-
-
-def dump_pickle(obj, fn):
-    with open(fn, 'wb') as f:
-        pickle.dump(obj, f, pickle.HIGHEST_PROTOCOL)
 
 
 class ScoterRunner(object):
