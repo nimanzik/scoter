@@ -373,7 +373,7 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
     stream = '' + hdr
     orig = event.preferred_origin
 
-    for pick in event.pick_list:
+    for pick in sorted(event.pick_list, key=lambda x: x.time.value):
 
         wid = pick.waveform_id
         if delimiter_str:
