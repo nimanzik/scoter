@@ -279,7 +279,8 @@ def load_nlloc_hyp(
         # --- Create QuakeML attributes ---
 
         waveform_id = WaveformStreamID(
-            network_code=net, station_code=sta, channel_code=cha, value='')
+            network_code=net, station_code=sta, channel_code=cha,
+            resource_uri='')
 
         phase = Phase(value=plabel)
         tpick = TimeQuantity(value=tpick)
@@ -383,7 +384,7 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
 
         comp = wid.channel_code and wid.channel_code[-1].upper() or '?'
         onset = ONSETS_DUMP.get(pick.onset, '?')
-        pha = pick.phase_hint.value or '?'
+        pha = pick.phase_hint.code or '?'
         pol = POLARITIES_DUMP.get(pick.polarity, '?')
         time_str = time_to_str(pick.time.value, format='%Y%m%d %H%M %S.4FRAC')
 

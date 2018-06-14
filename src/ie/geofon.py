@@ -127,7 +127,8 @@ def load_geofon_hyp(filename):
         eval_mode = EVALUATION_MODES[eval_mode]
 
         sta, net = q[0].strip(), q[1].strip()
-        wid = WaveformStreamID(network_code=net, station_code=sta, value='')
+        wid = WaveformStreamID(network_code=net, station_code=sta,
+            resource_uri='')
 
         dist = float(q[2])   # in degrees
         azi = float(q[3])    # in degrees
