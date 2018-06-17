@@ -377,7 +377,7 @@ class NodalPlanes(Object):
 
 
 class WaveformStreamID(Object):
-    resource_uri = ResourceReferenceOptional.T(xmlstyle='content')
+    resource_uri = ResourceReferenceOptional.T(default='', xmlstyle='content')
     network_code = AnonymousNetworkCode.T(xmlstyle='attribute')
     station_code = AnonymousStationCode.T(xmlstyle='attribute')
     channel_code = AnonymousChannelCode.T(optional=True, xmlstyle='attribute')
