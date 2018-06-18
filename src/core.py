@@ -1,5 +1,4 @@
 from collections import defaultdict
-import cPickle as pickle
 from functools import partial
 from itertools import chain
 import os.path as op
