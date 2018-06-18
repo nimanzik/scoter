@@ -16,10 +16,10 @@ Multiple-event location by using static and source-specific station correction t
 
 ## Download and Installation
 
-1. Install [Pyrocko](https://pyrocko.org/):
+1. Install [Pyrocko](https://pyrocko.org/):   
     See Pyrocko installation page [here](https://pyrocko.org/docs/current/install/).
 
-2. Install NonLinLoc:
+2. Install NonLinLoc:   
     See NonLinLoc repository that is modified and packaged as SCOTER backend [here](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git).
 
 3. Install SCOTER and the rest of dependencies:
@@ -109,7 +109,7 @@ when neighbouring event relative position vector is perpendicular to the target
 event ray take-off direction ($`\alpha \sim 90`$), and the model errors have
 greatest effects. This weighting approach is specially useful in global SSST
 location where seismic rays leaving the sources at different angles relative to
-the target event ray take-off direction.
+the target event ray take-off direction.   
 
 <p align="center">
 <img src="images/w_ed.png" width="600">
