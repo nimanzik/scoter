@@ -16,13 +16,13 @@ Multiple-event location by using static and source-specific station correction t
 
 ## Download and Installation
 
-1. Install [Pyrocko](https://pyrocko.org/):  
-    See Pyrocko installation page [here](https://pyrocko.org/docs/current/install/).  
+1. Install [Pyrocko](https://pyrocko.org/):
+    See Pyrocko installation page [here](https://pyrocko.org/docs/current/install/).
 
-2. Install NonLinLoc:  
-    See NonLinLoc repository that is modified and packaged as SCOTER backend [here](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git).  
+2. Install NonLinLoc:
+    See NonLinLoc repository that is modified and packaged as SCOTER backend [here](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git).
 
-3. Install SCOTER and the rest of dependencies:  
+3. Install SCOTER and the rest of dependencies:
 
     ```bash
     cd ~/src/   # or wherever you keep your source packages
@@ -363,7 +363,7 @@ nlloc_config: !gp.NLLocConfig
     vp_vs_ratio: -1.7
     max_num_3dgrid_mem: -1
     min_dist_sta_grid: -1.0
-    duplicate_arrivals: 1
+    reject_duplicate_arrivals: 1
 
   gau: !gp.NLLocGau
     # Gaussian model errors parameters (see LOCGAU)
