@@ -1,5 +1,4 @@
 from collections import defaultdict
-import cPickle as pickle
 from functools import partial
 from itertools import chain
 import os.path as op
@@ -361,7 +360,7 @@ class NLLocMeth(Object):
     vp_vs_ratio = Float.T()
     max_num_3dgrid_mem = Int.T()
     min_dist_sta_grid = Float.T()
-    duplicate_arrivals = Int.T()
+    reject_duplicate_arrivals = Int.T()
 
     def __str__(self):
         params = [
@@ -369,7 +368,7 @@ class NLLocMeth(Object):
             '{self.min_num_phases}', '{self.max_num_phases}',
             '{self.min_num_Sphases}', '{self.vp_vs_ratio}',
             '{self.max_num_3dgrid_mem}', '{self.min_dist_sta_grid}',
-            '{self.duplicate_arrivals}']
+            '{self.reject_duplicate_arrivals}']
 
         return WSPACE.join(params).format(self=self)
 
