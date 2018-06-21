@@ -611,8 +611,12 @@ class Event(Object):
         if self._pyrocko_event is None:
             event = self.preferred_origin.get_pyrocko_event()
             setattr(event, 'name', self.name)
-            magnitude = getattr(self.preferred_magnitude.mag, 'value', None)
-            setattr(event, 'magnitude', magnitude)
+            try:
+                magnitude = getattr(
+                    self.preferred_magnitude.mag, 'value', None)
+                setattr(event, 'magnitude', magnitude)
+            except AttributeError:
+                pass
 
             self._pyrocko_event = event
 
