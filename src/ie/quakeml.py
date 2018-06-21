@@ -558,7 +558,7 @@ class Origin(Object):
 
     def get_pyrocko_event(self):
         if self.creation_info:
-            catalog = self.creation_info.agencyID or self.creation_info.author
+            catalog = self.creation_info.agency_id or self.creation_info.author
         else:
             catalog = None
 
