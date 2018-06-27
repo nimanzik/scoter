@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import calendar
 import datetime
 import math
@@ -37,7 +39,7 @@ class NLLocError(Exception):
 
 
 def load_nlloc_hyp(
-        filename, event_name=None, delimiter_str=None, set_arrival_dict=False):
+        filename, event_name=None, delimiter_str=None, add_arrival_maps=False):
     """
     Reads a NonLinLoc hypocenter-phase file to a
     :class:`~scoter.ie.quakeml.QuakeML` object.
@@ -58,10 +60,10 @@ def load_nlloc_hyp(
         is considered as the `station code` and an empty string is
         assigned to the `network code` for each pick.
 
-    set_arrival_dict : bool (default: False)
+    add_arrival_maps : bool (default: False)
         Whether to return arrivals as a dictionary. If `True`,
         :class:`scoter.ie.quakeml.Event` object attribute
-        `arrival_dict` is set to a dictionary whose keys are tuples of
+        `arrival_maps` is set to a dictionary whose keys are tuples of
         (station_label, phase_label) and values are corresponding
         (time_residual, time_correction, distance_deg).
 
@@ -238,7 +240,7 @@ def load_nlloc_hyp(
 
     pick_list = []
     arrival_list = []
-    arrival_dict = {}
+    arrival_maps = {}
 
     for i, line in enumerate(pha_lines):
         items = line.split()
@@ -282,7 +284,7 @@ def load_nlloc_hyp(
             network_code=net, station_code=sta, channel_code=cha,
             resource_uri='')
 
-        phase = Phase(value=plabel)
+        phase = Phase(code=plabel)
         tpick = TimeQuantity(value=tpick)
 
         dummy_id = 'smi:local/{}'.format(i)
@@ -303,7 +305,7 @@ def load_nlloc_hyp(
         arrival_list.append(arrival)
 
         # SCOTER arrival
-        arrival_dict[slabel, plabel] = (tres, tcor, dist)
+        arrival_maps[slabel, plabel] = (tres, tcor, dist)
 
     # ------- Create quakeml.Event object -------
 
@@ -314,14 +316,13 @@ def load_nlloc_hyp(
         origin_uncertainty_list=[origin_uncertainty],
         quality=origin_quality, evaluation_status=evaluation_status)
 
-    if not set_arrival_dict:
-        arrival_dict = None
-
     event = Event(
         public_id=public_id,
         origin_list=[origin],
-        pick_list=pick_list,
-        arrival_dict=arrival_dict)
+        pick_list=pick_list)
+
+    if add_arrival_maps:
+        event.arrival_maps = arrival_maps
 
     event_parameters = EventParameters(
         public_id='smi:local/EventParameters',
