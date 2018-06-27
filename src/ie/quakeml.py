@@ -1,13 +1,16 @@
+# -*- coding: utf-8 -*-
+
 import re
 
 from pyrocko import model
 from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
-    Timestamp, Object, List, Union, Bool
+    Timestamp, Object, List, Union, Bool, Unicode
 
 from ..log_util import custom_logger
 
 
 guts_prefix = 'gp'
+guts_xmlns = 'http://quakeml.org/xmlns/bed/1.2'
 
 # Set logger
 logger = custom_logger(__name__)
@@ -183,7 +186,7 @@ class AgencyID(String):
     pass
 
 
-class Author(String):
+class Author(Unicode):
     pass
 
 
@@ -223,7 +226,7 @@ class MagnitudeHint(String):
     pass
 
 
-class Region(String):
+class Region(Unicode):
     pass
 
 
@@ -279,7 +282,7 @@ class DataUsed(Object):
 
 
 class EventDescription(Object):
-    text = String.T()
+    text = Unicode.T()
     type = EventDescriptionType.T(optional=True)
 
 
@@ -387,7 +390,7 @@ class WaveformStreamID(Object):
 
 class Comment(Object):
     id = ResourceReference.T(optional=True, xmlstyle='attribute')
-    text = String.T()
+    text = Unicode.T()
     creation_info = CreationInfo.T(optional=True)
 
 
@@ -592,9 +595,8 @@ class Event(Object):
     type_certainty = EventTypeCertainty.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
-    def __init__(self, arrival_dict=None, **kwargs):
-        Object.__init__(self, **kwargs)
-        self.arrival_dict = arrival_dict
+    def __init__(self, *args, **kwargs):
+        Object.__init__(self, *args, **kwargs)
         self._pyrocko_event = None
         self._name = None
         self._preferred_origin = None
@@ -681,13 +683,26 @@ class EventParameters(Object):
         xmlstyle='attribute', xmltagname='publicID')
     comment_list = List.T(Comment.T())
     event_list = List.T(Event.T(xmltagname='event'))
-    description = String.T(optional=True)
+    description = Unicode.T(optional=True)
     creation_info = CreationInfo.T(optional=True)
 
 
 class QuakeML(Object):
     xmltagname = 'quakeml'
+    xmlns = 'http://quakeml.org/xmlns/quakeml/1.2'
+    guessable_xmlns = [xmlns, guts_xmlns]
+
     event_parameters = EventParameters.T(optional=True)
+
+    @classmethod
+    def load_xml(cls, *args, **kwargs):
+        kwargs['ns_hints'] = [
+            'http://quakeml.org/xmlns/quakeml/1.2',
+            'http://quakeml.org/xmlns/bed/1.2']
+
+        kwargs['ns_ignore'] = True
+
+        return super(QuakeML, cls).load_xml(*args, **kwargs)
 
     def get_pyrocko_events(self):
         """Extract a list of :class:`pyrocko.model.Event` instances"""
