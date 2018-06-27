@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from collections import defaultdict, namedtuple, OrderedDict
 import os.path as op
 from os.path import join as pjoin
@@ -36,7 +38,7 @@ def _load_one_event(fns, *args):
         o = e.preferred_origin
         u = o.origin_uncertainty_list[0]
 
-        res_dict = dict((k, v[0]) for k, v in e.arrival_dict.iteritems())
+        res_dict = dict((k, v[0]) for k, v in e.arrival_maps.iteritems())
 
         dummy_event = ScoterEvent(
             lat=o.latitude.value, lon=o.longitude.value, depth=o.depth.value,

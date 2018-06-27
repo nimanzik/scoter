@@ -1,4 +1,5 @@
-from __future__ import print_function
+# -*- coding: utf-8 -*-
+
 import os.path as op
 
 import numpy as np

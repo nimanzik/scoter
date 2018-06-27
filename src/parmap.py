@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from itertools import imap, izip, repeat, starmap
 from multiprocessing import Pool, cpu_count
 

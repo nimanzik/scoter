@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from collections import defaultdict
 from copy import copy
 
@@ -33,7 +35,7 @@ def _collect_residuals_static(config):
         if config.locqual_config.islowquality(event):
             continue
 
-        for (slabel, plabel), (res, tcor, _) in event.arrival_dict.iteritems():
+        for (slabel, plabel), (res, tcor, _) in event.arrival_maps.iteritems():
             plabel = sconfig.phase_map.get(plabel, None)
             if not plabel:
                 continue
@@ -195,7 +197,7 @@ def calc_ssst(config, iiter):
             lowqualities.append(event.name)
             continue
 
-        for (_, plabel), (res, _, _) in event.arrival_dict.iteritems():
+        for (_, plabel), (res, _, _) in event.arrival_maps.iteritems():
             plabel = sconfig.phase_map.get(plabel, None)
             if not plabel:
                 continue
@@ -289,7 +291,7 @@ def _calc_single_ssst(itrg_event, g_data_id):
     new_delays = []
 
     for (trg_slabel, trg_plabel_orig), (res, tcor_old, delta_deg) in \
-            trg_event.arrival_dict.iteritems():
+            trg_event.arrival_maps.iteritems():
         # variable `trg_plabel` should be a standardized phase label
         trg_plabel = sconfig.phase_map.get(trg_plabel_orig)
         if trg_plabel is None:
@@ -328,7 +330,7 @@ def _calc_single_ssst(itrg_event, g_data_id):
 
             ngh_res = []
             for dum_plabel in sconfig.phase_map_rev[trg_plabel]:
-                rtd = ngh_event.arrival_dict.get((trg_slabel, dum_plabel))
+                rtd = ngh_event.arrival_maps.get((trg_slabel, dum_plabel))
                 if rtd:
                     ngh_res.append(rtd[0])
 

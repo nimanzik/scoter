@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import cPickle as pickle
 import os.path as op
 from os.path import join as pjoin

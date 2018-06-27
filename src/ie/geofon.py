@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 import re
 
 import numpy as np
@@ -127,12 +129,12 @@ def load_geofon_hyp(filename):
         eval_mode = EVALUATION_MODES[eval_mode]
 
         sta, net = q[0].strip(), q[1].strip()
-        wid = WaveformStreamID(network_code=net, station_code=sta,
-            resource_uri='')
+        wid = WaveformStreamID(
+            network_code=net, station_code=sta, resource_uri='')
 
         dist = float(q[2])   # in degrees
         azi = float(q[3])    # in degrees
-        pha = Phase(value=q[4].strip())
+        pha = Phase(code=q[4].strip())
 
         arrtime = ' '.join((od.group(1), q[5]))
         arrtime = str_to_time(arrtime, format='%Y-%m-%d %H:%M:%S.OPTFRAC')

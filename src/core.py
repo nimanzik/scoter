@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from collections import defaultdict
 from functools import partial
 from itertools import chain
@@ -747,7 +749,7 @@ class Config(HasPaths):
         dummy_loader = partial(
             load_nlloc_hyp,
             delimiter_str=self.dataset_config.delimiter_str,
-            set_arrival_dict=True)
+            add_arrival_maps=True)
 
         logger.info('Getting located events')
 

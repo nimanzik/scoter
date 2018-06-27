@@ -1,3 +1,5 @@
+# -*- coding: utf-8 -*-
+
 from __future__ import division
 import math
 
@@ -139,14 +141,14 @@ def gc_azimuth(lat1, lon1, lat2, lon2):
 def gc_azibazi(lat1, lon1, lat2, lon2):
     """
     Azimuth and back-azimuth between two points on spherical earth.
-    
+
     Parameters
     ----------
     lat1, lon1: float
         Latitude and longitude of the first point in [deg].
     lat2, lon2: float
         Latitude and longitude of the second point in [deg].
-        
+
     Returns
     -------
     tuple, float
