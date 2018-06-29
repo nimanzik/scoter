@@ -373,9 +373,19 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
         '{time_str:s} GAU {err_mag:9.2e} {coda:9.2e} {amp:9.2e} {per:9.2e}\n'
 
     stream = '' + hdr
-    orig = event.preferred_origin
+    orig = event.preferred_origin or event.origin_list[0]
+
+    arvl_maps = dict((x.pick_id, x) for x in orig.arrival_list)
 
     for pick in sorted(event.pick_list, key=lambda x: x.time.value):
+
+        arvl = arvl_maps[pick.public_id]
+
+        if arvl.time_weight is None and arvl.time_used is None:
+            continue
+
+        if arvl.time_weight == 0.0 or arvl.time_used == 0:
+            continue
 
         wid = pick.waveform_id
         if delimiter_str:
@@ -385,21 +395,14 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
 
         comp = wid.channel_code and wid.channel_code[-1].upper() or '?'
         onset = ONSETS_DUMP.get(pick.onset, '?')
-        pha = pick.phase_hint.code or '?'
+
+        pha = (
+            getattr(pick.phase_hint, 'code', None) or arvl.phase.code or '?')
+
         pol = POLARITIES_DUMP.get(pick.polarity, '?')
         time_str = time_to_str(pick.time.value, format='%Y%m%d %H%M %S.4FRAC')
 
         err_mag = pick.time.uncertainty or -1.0
-
-        if orig is not None:
-            arr = [x for x in orig.arrival_list if
-                   x.pick_id == pick.public_id][0]
-
-            if arr.time_weight is None and arr.time_used is None:
-                continue
-
-            if arr.time_weight == 0.0 or arr.time_used == 0:
-                continue
 
         stream += p.format(
             slabel=slabel, inst='?', comp=comp, onset=onset, pha=pha, pol=pol,
