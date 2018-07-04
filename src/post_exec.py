@@ -54,6 +54,7 @@ def _load_one_event(fns, *args):
 def harvest(rundir, force=False, nparallel=1, show_progress=False):
 
     config = load_config(rundir)
+    sconfig = config.station_terms_config
 
     dumpdir = pjoin(rundir, 'harvest')
 
@@ -75,11 +76,11 @@ def harvest(rundir, force=False, nparallel=1, show_progress=False):
     resultdir_B = pjoin(   # noqa
         rundir,
         NAMED_STEPS['B'],
-        '{:02}_2_loc'.format(config.static_config.niter))
+        '{:02}_2_loc'.format(sconfig.static_config.niter))
     resultdir_C = pjoin(   # noqa
         rundir,
         NAMED_STEPS['C'],
-        '{:02}_2_loc'.format(config.ssst_config.niter))
+        '{:02}_2_loc'.format(sconfig.ssst_config.niter))
 
     resultdirs = {}
     for k in 'A B C'.split():
@@ -127,11 +128,10 @@ def harvest(rundir, force=False, nparallel=1, show_progress=False):
 
 def export_static(rundir, filename=None):
     config = load_config(rundir)
+    sconfig = config.station_terms_config
 
-    infile = pjoin(
-        rundir,
-        NAMED_STEPS['B'],
-        '{:02}_1_delay.pickle'.format(config.static_config.niter))
+    infile = pjoin(rundir, NAMED_STEPS['B'], '{:02}_1_delay.pickle'.format(
+        sconfig.static_config.niter))
 
     if not op.exists(infile):
         raise FileNotFound('cannot access "{}": no such file'.format(infile))
@@ -149,7 +149,7 @@ def export_static(rundir, filename=None):
     tmpl = '{slabel:8s} {lat:9.5f} {lon:10.5f} {plabel:6s} {tcor:8.4f}'
 
     for delay in delays:
-        if delay.phase_label not in config.static_config.phase_list:
+        if delay.phase_label not in sconfig.static_config.phase_list:
             continue
 
         sta = [x for x in config.stations if x.name == delay.station_label][0]
@@ -164,11 +164,12 @@ def export_static(rundir, filename=None):
 
 def export_ssst(rundir, station_label, phase_label, filename=None):
     config = load_config(rundir)
+    sconfig = config.station_terms_config
 
     infile_d = pjoin(
         rundir,
         NAMED_STEPS['C'],
-        '{:02}_1_delay.pickle'.format(config.ssst_config.niter))
+        '{:02}_1_delay.pickle'.format(sconfig.ssst_config.niter))
 
     infile_e = pjoin(rundir, 'harvest', 'results_C_ssst.pickle')
 

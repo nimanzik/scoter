@@ -18,7 +18,7 @@ logger = custom_logger(__name__)
 
 
 def _collect_residuals_static(config):
-    sconfig = config.static_config
+    sconfig = config.station_terms_config.static_config
 
     # Extract list of events
     event_list = config.get_located_events()
@@ -32,7 +32,7 @@ def _collect_residuals_static(config):
         pbar = progressbar(max_value=len(event_list)).start()
 
     for ievent, event in enumerate(event_list):
-        if config.locqual_config.islowquality(event):
+        if config.station_terms_config.locqual_config.islowquality(event):
             continue
 
         for (slabel, plabel), (res, tcor, _) in event.arrival_maps.iteritems():
@@ -70,8 +70,8 @@ def calc_static(config):
     # --- Collect residuals ---
     stapha_to_res_tcor = _collect_residuals_static(config)
 
-    sconfig = config.static_config
-    wconfig = config.weight_config
+    sconfig = config.station_terms_config.static_config
+    wconfig = config.station_terms_config.weight_config
 
     if wconfig.apply_outlier_rejection:
         if wconfig.outlier_rejection_type == 'dynamic':
@@ -177,8 +177,8 @@ def calc_ssst(config, iiter):
         next location iteration.
     """
 
-    sconfig = config.ssst_config
-    wconfig = config.weight_config
+    sconfig = config.station_terms_config.ssst_config
+    wconfig = config.station_terms_config.weight_config
 
     # --- Extract list of all events, low quality events etc ---
     event_list = config.get_located_events()
@@ -193,7 +193,7 @@ def calc_ssst(config, iiter):
 
     for ievent, event in enumerate(event_list):
 
-        if config.locqual_config.islowquality(event):
+        if config.station_terms_config.locqual_config.islowquality(event):
             lowqualities.append(event.name)
             continue
 
@@ -241,7 +241,7 @@ def calc_ssst(config, iiter):
 
     logger.info(
         'Computing SSST values for each source-receiver path '
-        '(r_max = {} km)'.format(int(r_max/1000.)))
+        '(r_max = {:.0f} km)'.format(r_max/1000.))
 
     new_targets = parstarmap(
         _calc_single_ssst,
@@ -259,8 +259,8 @@ def _calc_single_ssst(itrg_event, g_data_id):
         pha_to_rescutoff, lowqualities = g_state[g_data_id]
 
     trg_event = event_list[itrg_event]
-    sconfig = config.ssst_config
-    wconfig = config.weight_config
+    sconfig = config.station_terms_config.ssst_config
+    wconfig = config.station_terms_config.weight_config
 
     # Find neighboring events; NOTE: Target event is included in the tree
     trg_in_ecef = kdtree.data[itrg_event, :]   # OC vector

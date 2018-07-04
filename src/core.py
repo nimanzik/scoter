@@ -40,7 +40,7 @@ NAMED_STEPS = {'A': 'A_single', 'B': 'B_static', 'C': 'C_ssst'}
 logger = custom_logger(__name__)
 
 
-# ----- Dataset configuration (input data). -----
+# ----- Dataset configuration (input data) -----
 
 class DatasetConfig(HasPaths):
     events_path = Path.T()
@@ -153,9 +153,64 @@ class DatasetConfig(HasPaths):
         return trees
 
 
-# ----- Static station terms configuration. -----
+# ----- Earthquake location quality configuration -----
 
-class StaticTermsConfig(Object):
+class LocationQualityConfig(Object):
+    standard_error_max = Float.T(optional=True)
+    secondary_azigap_max = Float.T(optional=True)
+    largest_uncertainty_max = Float.T(optional=True)
+
+    def __init__(self, **kwargs):
+        Object.__init__(
+            self,
+            standard_error_max=kwargs.get('standard_error_max', 3.),
+            secondary_azigap_max=kwargs.get('secondary_azigap_max', 180.),
+            largest_uncertainty_max=kwargs.get(
+                'largest_uncertainty_max', 1./M2DEG))
+
+    def islowquality(self, event):
+        """Check the location quality."""
+
+        o = event.preferred_origin
+        q = o.quality
+        u = o.origin_uncertainty_list[0]
+        c = u.confidence_ellipsoid
+
+        if (q.standard_error > self.standard_error_max or
+                q.secondary_azimuthal_gap > self.secondary_azigap_max or
+                c.semi_major_axis_length > self.largest_uncertainty_max):
+            # Low quality location.
+            return True
+
+        return False
+
+
+# ----- Weighting and re-weighting scheme configuration -----
+
+class WeightConfig(Object):
+    distance_weighting = StringChoice.T(
+        choices=['uniform', 'distance', 'effective_distance'], optional=True)
+    apply_outlier_rejection = Bool.T(optional=True)
+    outlier_rejection_type = StringChoice.T(
+        choices=['static', 'dynamic'], optional=True)
+    outlier_rejection_level = Choice.T(
+        choices=[Float.T(), Int.T()], optional=True)
+
+    def __init__(self, **kwargs):
+
+        Object.__init__(
+            self,
+            distance_weighting=kwargs.get('distance_weighting', 'uniform'),
+            apply_outlier_rejection=kwargs.get(
+                'apply_outlier_rejection', True),
+            outlier_rejection_type=kwargs.get(
+                'outlier_rejection_type', 'dynamic'),
+            outlier_rejection_level=kwargs.get('outlier_rejection_level', 6))
+
+
+# ----- Static station terms configuration -----
+
+class StaticConfig(Object):
     niter = Int.T()
     phase_list = List.T(PhaseLabel.T())
     nresiduals_min = Int.T()
@@ -171,7 +226,7 @@ class StaticTermsConfig(Object):
 
 # ----- Source-specific station terms configuration. -----
 
-class SourceSpecificTermsConfig(Object):
+class SourceSpecificConfig(Object):
     niter = Int.T()
     phase_list = List.T(PhaseLabel.T())
     start_cutoff_dist = Float.T()
@@ -193,61 +248,20 @@ class SourceSpecificTermsConfig(Object):
 
     def get_cutoff_distances(self):
         return loglinspace(
-            self.start_cutoff_dist,
-            self.end_cutoff_dist,
-            self.niter)
+            self.start_cutoff_dist, self.end_cutoff_dist, self.niter)
 
     def get_nlinks(self):
         return np.round(loglinspace(
-            self.start_nlinks_max,
-            self.end_nlinks_max,
-            self.niter))
+            self.start_nlinks_max, self.end_nlinks_max, self.niter))
 
 
-# ----- Weighting and re-weighting scheme configuration. -----
+# ----- Station terms config -----
 
-class WeightConfig(Object):
-    distance_weighting = StringChoice.T(
-        choices=['uniform', 'distance', 'effective_distance'], optional=True)
-    apply_outlier_rejection = Bool.T(optional=True)
-    outlier_rejection_type = StringChoice.T(
-        choices=['static', 'dynamic'], optional=True)
-    outlier_rejection_level = Choice.T(
-        choices=[Float.T(), Int.T()], optional=True)
-
-    def __init__(
-            self, distance_weighting=None, apply_outlier_rejection=None,
-            outlier_rejection_type=None, outlier_rejection_level=None):
-
-        Object.__init__(
-            self,
-            distance_weighting=distance_weighting or 'uniform',
-            apply_outlier_rejection=apply_outlier_rejection or True,
-            outlier_rejection_type=outlier_rejection_type or 'dynamic',
-            outlier_rejection_level=outlier_rejection_level or 6)
-
-
-# ----- Earthquake location quality configuration. -----
-
-class LocationQualityConfig(Object):
-    standard_error_max = Float.T()
-    secondary_azigap_max = Float.T()
-    largest_uncertainty_max = Float.T()
-
-    def islowquality(self, event):
-        """Check the location quality."""
-        o = event.preferred_origin
-        q = o.quality
-        u = o.origin_uncertainty_list[0]
-        c = u.confidence_ellipsoid
-
-        if (q.standard_error > self.standard_error_max or
-                q.secondary_azimuthal_gap > self.secondary_azigap_max or
-                c.semi_major_axis_length > self.largest_uncertainty_max):
-            # Low quality location.
-            return True
-
-        return False
+class StationTermsConfig(Object):
+    static_config = StaticConfig.T()
+    ssst_config = SourceSpecificConfig.T()
+    weight_config = WeightConfig.T(optional=True)
+    locqual_config = LocationQualityConfig.T(optional=True)
 
 
 # ----- Seismic network configuration. -----
@@ -257,15 +271,13 @@ class NetworkConfig(Object):
     station_dist_min = Float.T(optional=True)
     station_dist_max = Float.T(optional=True)
 
-    def __init__(
-            self, station_selection=None, station_dist_min=None,
-            station_dist_max=None):
+    def __init__(self, **kwargs):
 
         Object.__init__(
             self,
-            station_selection=station_selection or False,
-            station_dist_min=station_dist_min or 0.,
-            station_dist_max=station_dist_max or 180.)
+            station_selection=kwargs.get('station_selection', False),
+            station_dist_min=kwargs.get('station_dist_min', 0.),
+            station_dist_max=kwargs.get('station_dist_max', 180.))
 
 
 # ----- NLLoc configuration (control file statements). -----
@@ -567,10 +579,7 @@ def _get_single_target(event, config):
 class Config(HasPaths):
     rundir = Path.T()
     dataset_config = DatasetConfig.T()
-    static_config = StaticTermsConfig.T()
-    ssst_config = SourceSpecificTermsConfig.T()
-    weight_config = WeightConfig.T()
-    locqual_config = LocationQualityConfig.T()
+    station_terms_config = StationTermsConfig.T()
     network_config = NetworkConfig.T()
     nlloc_config = NLLocConfig.T()
 
@@ -615,7 +624,8 @@ class Config(HasPaths):
 
     @property
     def takeoffangles(self):
-        if (self.weight_config.distance_weighting == 'effective_distance' and
+        wconfig = self.station_terms_config.weight_config
+        if (wconfig.distance_weighting == 'effective_distance' and
                 self._takeoffangles is None):
             # load takeoff-angle trees
             self._takeoffangles = self.dataset_config.get_takeoffangles(
@@ -702,15 +712,16 @@ class Config(HasPaths):
         self._show_progress = boolean
 
     def update_phase_maps(self):
+        sconfig = self.station_terms_config
         # phase_map = {'P': 'P', 'Pb': 'P', 'Pg': 'P', 'Pn': 'P'}
         for phaseid in self.nlloc_config.phaseid_list:
             d = {k: phaseid.std_phase for k in phaseid.phase_code_list}
 
-            if phaseid.std_phase in self.static_config.phase_list:
-                self.static_config.phase_map.update(d)
+            if phaseid.std_phase in sconfig.static_config.phase_list:
+                sconfig.static_config.phase_map.update(d)
 
-            if phaseid.std_phase in self.ssst_config.phase_list:
-                self.ssst_config.phase_map.update(d)
+            if phaseid.std_phase in sconfig.ssst_config.phase_list:
+                sconfig.ssst_config.phase_map.update(d)
 
     def update_phase_maps_rev(self):
         # phase_map_rev = {'P': ['Pb', 'P', 'Pg', 'Pn']}
@@ -722,7 +733,7 @@ class Config(HasPaths):
             return d_rev
 
         for s in ['static', 'ssst']:
-            obj = eval('self.{0}_config'.format(s))
+            obj = eval('self.station_terms_config.{0}_config'.format(s))
             d_rev = reverse(obj.phase_map)
             setattr(obj, 'phase_map_rev', d_rev)
 
@@ -782,7 +793,7 @@ class ScoterRunner(object):
         logger.info('Done with single-event location\n')
 
     def _run_static(self):
-        niter = self.config.static_config.niter
+        niter = self.config.station_terms_config.static_config.niter
 
         if niter <= 0:
             return
@@ -831,7 +842,7 @@ class ScoterRunner(object):
                 'iteration {0} / {1}\n'.format(iiter+1, niter))
 
     def _run_ssst(self):
-        niter = self.config.ssst_config.niter
+        niter = self.config.station_terms_config.ssst_config.niter
 
         if niter <= 0:
             return
@@ -945,10 +956,11 @@ def go(config, steps, force=False, nparallel=1, show_progress=False):
 
 __all__ = """
     DatasetConfig
-    StaticTermsConfig
-    SourceSpecificTermsConfig
-    WeightConfig
     LocationQualityConfig
+    WeightConfig
+    StaticConfig
+    SourceSpecificConfig
+    StationTermsConfig
     NetworkConfig
     NLLocTrans
     NLLocGrid
