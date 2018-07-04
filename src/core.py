@@ -99,7 +99,7 @@ class DatasetConfig(HasPaths):
             except IndexError:
                 net = ''.strip()
             sta = items[-4].strip()
-            slabel = self.delimiter_str.join([net, sta])
+            slabel = self.delimiter_str.join(items[-5:-3])
 
             lat, lon, elev = map(float, items[-3:])
             x, y, z = geodetic_to_ecef(lat, lon, 0.)

@@ -252,9 +252,9 @@ def load_nlloc_hyp(
             continue
 
         slabel = items[0].strip()
-        if delimiter_str:
+        try:
             net, sta = slabel.split(delimiter_str)
-        else:
+        except ValueError:
             net, sta = '', slabel
 
         cha = items[2].strip()
