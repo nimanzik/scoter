@@ -188,7 +188,7 @@ dataset_config: !gp.DatasetConfig
   bulletins_template_path: './obs/${event_name}.nll'
 
   # File with stations information
-  stations_path: './meta/stations-complete-geofon.sf'
+  stations_path: './meta/stations.sf'
 
   # Delimiter string used as the network code and station code separator
   # character. Used to split the station labels, and to join network codes
@@ -205,97 +205,91 @@ dataset_config: !gp.DatasetConfig
   takeoffangles_template_path: './angle/ak135.${phase_label}.DEFAULT.angle.pf'
 
 # -----------------------------------------------------------------------------
-# Configuration section for static station terms
+# Configuration section for station terms
 # -----------------------------------------------------------------------------
 
-static_config: !gp.StaticTermsConfig
+station_terms_config: !gp.StationTermsConfig
 
-  # Number of iterations for static station terms
-  niter: 1
+  # Subsection on static station terms (STATIC)
+  static_config: !gp.StaticConfig
 
-  # List of direct phases (P and/or S) for which static terms are computed
-  phase_list: ['P', 'S']
+    # Number of iterations for static station terms
+    niter: 1
 
-  # Minimum number of residuals required to compute static term for each
-  # station and phase (P or S)
-  nresiduals_min: 5
+    # List of direct phases (P and/or S) for which static terms are computed
+    phase_list: ['P', 'S']
 
-# -----------------------------------------------------------------------------
-# Configuration section for source-specific station terms
-# -----------------------------------------------------------------------------
+    # Minimum number of residuals required to compute static term for each
+    # station and phase (P or S)
+    nresiduals_min: 5
 
-ssst_config: !gp.SourceSpecificTermsConfig
+  # Subsection on source-specific station terms (SSST)
+  ssst_config: !gp.SourceSpecificConfig
 
-  # Number of iterations for source-specific station terms
-  niter: 5
+    # Number of iterations for source-specific station terms
+    niter: 5
 
-  # List of direct phases (P and/or S) for which SSST values are computed
-  phase_list: ['P', 'S']
+    # List of direct phases (P and/or S) for which SSST values are computed
+    phase_list: ['P', 'S']
 
-  # Starting distance cutoff in [m] for SSST computation
-  start_cutoff_dist: 100000.0
+    # Starting distance cutoff in [m] for SSST computation
+    start_cutoff_dist: 100000.0
 
-  # Starting maximum number of nearby events for SSST computation
-  start_nlinks_max: 100
+    # Starting maximum number of nearby events for SSST computation
+    start_nlinks_max: 100
 
-  # Ending distance cutoff in [m] for SSST computation
-  end_cutoff_dist: 25000.0
+    # Ending distance cutoff in [m] for SSST computation
+    end_cutoff_dist: 25000.0
 
-  # Ending maximum number of nearby events for SSST computation
-  end_nlinks_max: 20
+    # Ending maximum number of nearby events for SSST computation
+    end_nlinks_max: 20
 
-  # Minimum number of nearby events (i.e. residuals) required to compute
-  # SSST value for each source-receiver path
-  nlinks_min: 5
+    # Minimum number of nearby events (i.e. residuals) required to compute
+    # SSST value for each source-receiver path
+    nlinks_min: 5
 
-  # Minimum number of adjusted picks (i.e. station terms) for each event
-  # required to consider it in SSST iterations
-  ndelays_min: 4
+    # Minimum number of adjusted picks (i.e. station terms) for each event
+    # required to consider it in SSST iterations
+    ndelays_min: 4
 
-# -----------------------------------------------------------------------------
-# Configuration section for weighting and re-weighting scheme
-# -----------------------------------------------------------------------------
+  # Subsection on weighting and re-weighting schemes
+  weight_config: !gp.WeightConfig
 
-weight_config: !gp.WeightConfig
+    # How to weight nearby events located around a target event. This option
+    # is valid only for SSST computation. (available choices are 'uniform',
+    # 'distance', 'effective_distance') (optional, default='uniform')
+    distance_weighting: 'uniform'
 
-  # How to weight nearby events located around a target event. This
-  # option is valid for SSST computation. (available choices are
-  # 'uniform', 'distance', 'effective_distance') (optional, default='uniform')
-  distance_weighting: 'uniform'
+    # Whether to apply residual outliers rejection (detect large travel
+    # time residuals that should not be used in station terms calculation).
+    # (optional, default=true)
+    apply_outlier_rejection: true
 
-  # Whether to apply residual outliers rejection (detect large travel
-  # time residuals that should not be used in station terms calculation).
-  # (optional, default=true)
-  apply_outlier_rejection: true
+    # Cutoff threshold type for residual outliers. (available choices are
+    # 'static', 'dynamic') (optional, default='dynamic')
+    outlier_rejection_type: 'dynamic'
 
-  # Cutoff threshold type for residual outliers. (available choices are
-  # 'static', 'dynamic') (optional, default='dynamic')
-  outlier_rejection_type: 'dynamic'
+    # Cutoff threshold level for residual outliers. For 'static' cutoff, it
+    # is the absolute threshold in [s]. For 'dynamic' cutoff, it is a factor
+    # to multiply the scaled median absolute deviation (SMAD) of the residuals.
+    # (optional, default=6)
+    outlier_rejection_level: 6
 
-  # Cutoff threshold level for residual outliers. For 'static' cutoff, it
-  # is the absolute threshold in [s]. For 'dynamic' cutoff, it is a factor
-  # to multiply the scaled median absolute deviation (SMAD) of the residuals.
-  # (optional, default=6)
-  outlier_rejection_level: 6
+  # Subsection on location quality control
+  locqual_config: !gp.LocationQualityConfig
 
-# -----------------------------------------------------------------------------
-# Configuration section for location quality control
-# -----------------------------------------------------------------------------
+    # Events with low-quality locations (i.e. do not satisfy the following
+    # conditions) are not used in station terms calculation.
 
-locqual_config: !gp.LocationQualityConfig
+    # Maximum location RMS in [s].
+    standard_error_max: 3.0
 
-  # Events with low-quality locations (i.e. do not satisfy the following
-  # conditions) are not used in station terms calculation.
+    # Maximum secondary azimuthal gap in [deg].
+    secondary_azigap_max: 180.0
 
-  # Maximum location RMS in [s].
-  standard_error_max: 3.0
-
-  # Maximum secondary azimuthal gap in [deg].
-  secondary_azigap_max: 180.0
-
-  # Maximum semi-major axis of the confidence ellipsoid in [m]
-  # (corresponding to the largest location uncertainty).
-  largest_uncertainty_max: 111000.0
+    # Maximum semi-major axis of the confidence ellipsoid in [m]
+    # (corresponding to the largest location uncertainty).
+    largest_uncertainty_max: 111319.5
 
 # -----------------------------------------------------------------------------
 # Configuration section for station network selection
@@ -309,10 +303,10 @@ network_config: !gp.NetworkConfig
   station_selection: false
 
   # Minimum epicentral distance in [deg] (optional, default=0.0)
-  station_dist_min: 0.
+  station_dist_min: 0.0
 
   # Maximum epicentral distance in [deg] (optional, default=180.0)
-  station_dist_max: 90.
+  station_dist_max: 180.0
 
 # -----------------------------------------------------------------------------
 # Configuration section for NonLinLoc controlling parameters
@@ -327,7 +321,6 @@ nlloc_config: !gp.NLLocConfig
     # some more parameters, named as `lat_orig`, `lon_orig`, `rot_angle`,
     # `ref_ellips`, `first_paral`, `second_paral`.
     trans_type: 'GLOBAL'
-
 
   grid: !gp.NLLocGrid
     # 3D search grid parameters (see LOCGRID)
@@ -378,18 +371,18 @@ nlloc_config: !gp.NLLocConfig
 
   phaseid_list:
   # List of phase identifier mapping (see LOCPHASEID)
-    # pP phase subsection
+    # subsection for pP phase
   - !gp.NLLocPhaseid
     std_phase: 'pP'
     phase_code_list: ['pP', 'pwP']
-    # P phase subsection
+    # subsection for P phase
   - !gp.NLLocPhaseid
     std_phase: 'P'
-    phase_code_list: ['P', 'p', 'Pn', 'Pg', 'Pb']
-    # S phase subsection
+    phase_code_list: ['P', 'p', 'Pg', 'Pb', 'Pn']
   - !gp.NLLocPhaseid
+    # subsection for S phase
     std_phase: 'S'
-    phase_code_list: ['S', 's', 'Sn', 'Sg', 'Sb']
+    phase_code_list: ['S', 's', 'Sg', 'Sb', 'Sn']
 
   elevcorr: !gp.NLLocElevcorr
     # Vertical ray elevation correction parameters (see LOCELEVCORR)
