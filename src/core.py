@@ -468,6 +468,10 @@ class NLLocConfig(Object):
     elevcorr = NLLocElevcorr.T(optional=True)
     stawt = NLLocStawt.T(optional=True)
 
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self._swap_bytes_flag = int(self.trans.trans_type == 'GLOBAL')
+
     def __str__(self):
         s = """
 CONTROL 0 54321

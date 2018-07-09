@@ -26,7 +26,7 @@ program_bins = {'nlloc': 'NLLoc'}
 
 # LOCFILES template string.
 fline_template = Template(
-    'LOCFILES ${obsfile} NLLOC_OBS ${ttpath} ${outroot} 1')
+    'LOCFILES ${obsfile} NLLOC_OBS ${ttpath} ${outroot} ${swap_bytes_flag}')
 
 # Directory of temporary files.
 if (os.environ.get('SSH_CONNECTION', None) or
@@ -116,7 +116,8 @@ def _nlloc_worker(itarget, config_id):
     fline = fline_template.substitute(
         obsfile=obsfile,
         ttpath=ttpath,
-        outroot=outroot)
+        outroot=outroot,
+        swap_bytes_flag=config.nlloc_config._swap_bytes_flag)
 
     with NamedTemporaryFile(
             mode='w+t', suffix=SUFFIX, delete=True, dir=tmp_dir) as f:
