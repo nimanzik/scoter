@@ -18,14 +18,14 @@ class ParmapTestCase(unittest.TestCase):
 
     def test_parmap(self):
         result = parmap.parmap(
-            pow, self.a, self.b, nworkers=4, show_progress=True,
+            pow, self.a, self.b, nparallel=4, show_progress=True,
             label='TEST parmap')
 
         np.testing.assert_equal(result, self.benchmark)
 
     def test_parstarmap(self):
         result = parmap.parstarmap(
-            pow, zip(self.a, self.b), nworkers=4, show_progress=True,
+            pow, zip(self.a, self.b), nparallel=4, show_progress=True,
             label='TEST parstarmap')
 
         np.testing.assert_equal(result, self.benchmark)
