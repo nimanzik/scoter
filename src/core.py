@@ -2,10 +2,12 @@
 
 from collections import defaultdict
 from functools import partial
+from glob import glob
 from itertools import chain
 import os.path as op
 from os.path import join as pjoin
 import shutil
+import sys
 
 import numpy as np
 
@@ -18,6 +20,7 @@ from pyrocko.guts import Bool, Choice, Float, Int, List, Object, String,\
 
 from .delay import calc_static, calc_ssst
 from .geodetic import ellipsoid_distance, geodetic_to_ecef, M2DEG
+from .grid import read_nll_grid
 from .ie.nlloc import load_nlloc_hyp
 from .ie.quakeml import QuakeML   # noqa
 from .location import nlloc_runner
@@ -470,7 +473,7 @@ class NLLocConfig(Object):
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
-        self._swap_bytes_flag = int(self.trans.trans_type == 'GLOBAL')
+        self._swapbytes_flag = 0
 
     def __str__(self):
         s = """
@@ -600,6 +603,7 @@ class Config(HasPaths):
         self._show_progress = None
         self.update_phase_maps()
         self.update_phase_maps_rev()
+        self.update_swapbytes_flag()
 
     @property
     def stations(self):
@@ -717,7 +721,7 @@ class Config(HasPaths):
 
     def update_phase_maps(self):
         sconfig = self.station_terms_config
-        # phase_map = {'P': 'P', 'Pb': 'P', 'Pg': 'P', 'Pn': 'P'}
+        # phase_map should be e.g. {'P': 'P', 'Pb': 'P', 'Pg': 'P', 'Pn': 'P'}
         for phaseid in self.nlloc_config.phaseid_list:
             d = {k: phaseid.std_phase for k in phaseid.phase_code_list}
 
@@ -728,7 +732,7 @@ class Config(HasPaths):
                 sconfig.ssst_config.phase_map.update(d)
 
     def update_phase_maps_rev(self):
-        # phase_map_rev = {'P': ['Pb', 'P', 'Pg', 'Pn']}
+        # phase_map_rev should be e.g. {'P': ['Pb', 'P', 'Pg', 'Pn']}
 
         def reverse(d):
             d_rev = defaultdict(list)
@@ -740,6 +744,16 @@ class Config(HasPaths):
             obj = eval('self.station_terms_config.{0}_config'.format(s))
             d_rev = reverse(obj.phase_map)
             setattr(obj, 'phase_map_rev', d_rev)
+
+    def update_swapbytes_flag(self):
+        fn_grd = glob(self.dataset_config.traveltimes_path+'*.buf')[0]
+        # we want to read the binary file in little-endian order
+        sys_is_le = sys.byteorder == 'little'
+        grd = read_nll_grid(fn_grd, swapbytes=(not sys_is_le))
+
+        if np.any(np.isnan(grd.data_array)):
+            # the binary file is stored in big-endian order
+            setattr(self.nlloc_config, '_swapbytes_flag', 1)
 
     def get_located_events(self):
         """
