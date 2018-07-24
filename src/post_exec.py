@@ -51,12 +51,12 @@ def _load_one_event(fns, *args):
     return tuple(es)
 
 
-def harvest(rundir, force=False, nparallel=1, show_progress=False):
+def harvest(rundir, force=False, nparallel=1, show_progress=False, weed=False):
 
     config = load_config(rundir)
     sconfig = config.station_terms_config
 
-    dumpdir = pjoin(rundir, 'harvest')
+    dumpdir = pjoin(rundir, 'harvest'+(weed and '_weed' or ''))
 
     if op.exists(dumpdir):
         if force:
@@ -71,40 +71,77 @@ def harvest(rundir, force=False, nparallel=1, show_progress=False):
         rundir, config.path_prefix, config.dataset_config.events_path)))
 
     event_names = [ev.name for ev in pyrocko_events]
-
-    resultdir_A = pjoin(rundir, NAMED_STEPS['A'])   # noqa
-    resultdir_B = pjoin(   # noqa
-        rundir,
-        NAMED_STEPS['B'],
-        '{:02}_2_loc'.format(sconfig.static_config.niter))
-    resultdir_C = pjoin(   # noqa
-        rundir,
-        NAMED_STEPS['C'],
-        '{:02}_2_loc'.format(sconfig.ssst_config.niter))
-
-    resultdirs = {}
-    for k in 'A B C'.split():
-        v = eval('resultdir_{}'.format(k))
-        if op.exists(v):
-            resultdirs[k] = v
-
-    # Dictionary sorted by key (A, B, C)
-    resultdirs = OrderedDict(sorted(resultdirs.items(), key=lambda t: t[0]))
+    basename_tmpl = '%(event_name)s%(ext)s'
 
     task_list = []
-    for event_name in event_names:
-        fns = []
-        for resultdir in resultdirs.values():
-            fn = pjoin(resultdir, '%(event_name)s%(ext)s' % dict(
-                event_name=event_name,
-                ext=HYP_FILE_EXTENSION))
-            fns.append(fn)
+    if weed is True:
+        # pick events remained until last iteration
+        resultdir_A = pjoin(rundir, NAMED_STEPS['A'])   # noqa
+        resultdir_B = pjoin(   # noqa
+            rundir,
+            NAMED_STEPS['B'],
+            '{:02}_2_loc'.format(sconfig.static_config.niter))
+        resultdir_C = pjoin(   # noqa
+            rundir,
+            NAMED_STEPS['C'],
+            '{:02}_2_loc'.format(sconfig.ssst_config.niter))
 
-        if not all([op.exists(x) for x in fns]):
-            continue
+        resultdirs = {}
+        for step in 'A B C'.split():
+            dn = eval('resultdir_{}'.format(step))
+            if op.exists(dn):
+                resultdirs[step] = dn
 
-        task_list.append((
-            tuple(fns), event_name, config.dataset_config.delimiter_str, True))
+        # Dictionary sorted by key (A, B, C)
+        resultdirs = OrderedDict(
+            sorted(resultdirs.items(), key=lambda t: t[0]))
+
+        for event_name in event_names:
+            fns = []
+            for resultdir in resultdirs.values():
+                fn = pjoin(resultdir, basename_tmpl % dict(
+                    event_name=event_name,
+                    ext=HYP_FILE_EXTENSION))
+                fns.append(fn)
+
+            if not all([op.exists(x) for x in fns]):
+                continue
+
+            task_list.append((
+                tuple(fns), event_name,
+                config.dataset_config.delimiter_str, True))
+    else:
+        tails = {
+            'A': '',
+            'B': '%(iiter)02d_2_loc',
+            'C': '%(iiter)02d_2_loc'}
+
+        niters = {
+            'A': 1,
+            'B': sconfig.static_config.niter,
+            'C': sconfig.ssst_config.niter}
+
+        resultdirs = {}
+        for step in 'A B C'.split():
+            head = pjoin(rundir, NAMED_STEPS[step])
+            if op.exists(head):
+                resultdirs[step] = op.join(head, tails[step])
+
+        for event_name in event_names:
+            fns = []
+            for step in resultdirs:
+                for i in range(niters[step], 0, -1):
+                    fn = op.join(
+                        resultdirs[step] % dict(iiter=i),
+                        basename_tmpl % dict(
+                            event_name=event_name, ext=HYP_FILE_EXTENSION))
+                    if op.exists(fn):
+                        fns.append(fn)
+                        break
+
+            task_list.append((
+                tuple(fns), event_name,
+                config.dataset_config.delimiter_str, True))
 
     # results = [((N_1A,E_1A), (N_1C,E_1C)), ((N_2A,E_2A), (N_2C,E_2C)), ...]
     # N: event_name; E: dummy_event; A,C: location steps

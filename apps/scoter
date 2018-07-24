@@ -297,7 +297,7 @@ def command_harvest(args):
     try:
         harvest(
             args.rundir, force=args.force, nparallel=args.nparallel,
-            show_progress=args.show_progress)
+            show_progress=args.show_progress, weed=args.weed)
     except PathAlreadyExists as e:
         logger.warn(e)
 
@@ -318,6 +318,11 @@ parser_harvest.add_argument(
     dest='nparallel', type=int, default=1, metavar='NPARALLEL',
     help='set number of events to process in parallel. '
          'If -1 is given all processors are used (default: 1).')
+
+parser_harvest.add_argument(
+    '--weed',
+    action='store_true',
+    help='weed out events relocated until the last static/ssst iteration.')
 
 parser_harvest.set_defaults(func=command_harvest)
 

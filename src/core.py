@@ -286,11 +286,20 @@ class NetworkConfig(Object):
 # ----- NLLoc configuration (control file statements). -----
 
 class NLLocTrans(Object):
-    trans_type = StringChoice.T(
-        choices=['GLOBAL', 'SIMPLE', 'NONE', 'SDC', 'LAMBERT'])
+    trans_type = StringChoice.T(choices=[
+        'GLOBAL', 'SIMPLE', 'NONE', 'SDC', 'LAMBERT'])
+    lat_orig = Float.T(optional=True)
+    lon_orig = Float.T(optional=True)
+    rot_angle = Float.T(optional=True)
+    ref_ellips = StringChoice.T(choices=[
+        'WGS-84', 'GRS-80', 'WGS-72', 'Australian', 'Krasovsky',
+        'International', 'Hayford-1909', 'Clarke-1880', 'Clarke-1866',
+        'Airy', 'Bessel', 'Hayford-1830', 'Sphere'], optional=True)
+    first_paral = Float.T(optional=True)
+    second_paral = Float.T(optional=True)
 
-    def __init__(self, trans_type, **kwargs):
-        self.trans_type = trans_type
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
 
         if self.trans_type not in ('GLOBAL', 'NONE'):
             try:
