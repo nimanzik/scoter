@@ -56,7 +56,8 @@ def harvest(rundir, force=False, nparallel=1, show_progress=False, weed=False):
     config = load_config(rundir)
     sconfig = config.station_terms_config
 
-    dumpdir = pjoin(rundir, 'harvest'+(weed and '_weed' or ''))
+    # dumpdir = pjoin(rundir, 'harvest'+(weed and '_weed' or ''))
+    dumpdir = pjoin(rundir, 'harvest')
 
     if op.exists(dumpdir):
         if force:
@@ -130,14 +131,27 @@ def harvest(rundir, force=False, nparallel=1, show_progress=False, weed=False):
         for event_name in event_names:
             fns = []
             for step in resultdirs:
+                dummy = []
                 for i in range(niters[step], 0, -1):
                     fn = op.join(
                         resultdirs[step] % dict(iiter=i),
                         basename_tmpl % dict(
                             event_name=event_name, ext=HYP_FILE_EXTENSION))
                     if op.exists(fn):
-                        fns.append(fn)
+                        dummy.append(fn)
                         break
+                    else:
+                        dummy.append(None)
+
+                dummy = filter(None, dummy)
+
+                if len(dummy) == 0:
+                    fns.append(None)
+                else:
+                    fns.extend(dummy)
+
+            if not all(fns):
+                continue
 
             task_list.append((
                 tuple(fns), event_name,
