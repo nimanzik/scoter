@@ -468,7 +468,9 @@ def load_nlloc_sta(filename, delimiter_str=None):
     return stations
 
 
-def dump_nlloc_sta(stations, filename, delimiter_str=None, zh_unit='m'):
+def dump_nlloc_sta(
+        stations, filename, delimiter_str=None, zh_unit='m',
+        control_keyword='LOCSRCE'):
     """
     Write a NonLinLoc station file from a list of
     :class:`pyrocko.model.Station` objects.
@@ -494,12 +496,24 @@ def dump_nlloc_sta(stations, filename, delimiter_str=None, zh_unit='m'):
     zh_unit : {'m', 'km'}, optional
         The units of the station depths and elevations, either in meters
         'm' or in kilometers 'km' (default: 'm').
+    control_keyword : {'LOCSRCE', 'GTSRCE'}, optional
+        Specifies NonLinLoc control keyword used for source description
+        (default: 'LOCSRCE').
     """
+
+    zh_unit = zh_unit.lower()
+    if zh_unit not in ('m', 'km'):
+        raise ValueError('acceptable values for zh_unit are "m" and "km"')
+
+    control_keyword = control_keyword.upper()
+    if control_keyword not in ('LOCSRCE', 'GTSRCE'):
+        raise ValueError(
+            'acceptable values for control_keyword are "LOCSRCE" and "GTSRCE"')
 
     conv = {'m': M2KM, 'km': 1.0}
     C = conv[zh_unit.lower()]
 
-    p = 'LOCSRCE {slabel:8s} LATLON {lat:8.4f} {lon:9.4f} {z:8.4f} {h:8.4f}\n'
+    p = '{kw} {slabel:8s} LATLON {lat:8.4f} {lon:9.4f} {z:8.4f} {h:8.4f}\n'
 
     ensuredirs(filename)
 
@@ -515,7 +529,7 @@ def dump_nlloc_sta(stations, filename, delimiter_str=None, zh_unit='m'):
             slabel = slabel.ljust(8)
 
             newline = p.format(
-                slabel=slabel, lat=s.lat, lon=s.lon,
+                kw=control_keyword, slabel=slabel, lat=s.lat, lon=s.lon,
                 z=s.depth*C, h=s.elevation*C)
 
             ofile.write(newline)

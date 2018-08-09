@@ -6,6 +6,7 @@ from glob import glob
 from itertools import chain
 import os.path as op
 from os.path import join as pjoin
+import re
 import shutil
 import sys
 
@@ -548,8 +549,8 @@ def _get_single_target(event, config):
         i1, i2 = idx_pha_block
         pha_lines = flines[i1:i2:1]
     else:
-        token = '{wspace}GAU{wspace}'.format(wspace=WSPACE)
-        pha_lines = [x for x in flines if token in x]
+        pattern = re.compile(r'\sGAU\s', re.I)
+        pha_lines = [x for x in flines if pattern.findall(x)]
 
     if len(pha_lines) == 0:
         raise ScoterError(
