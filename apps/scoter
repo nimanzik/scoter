@@ -11,7 +11,7 @@ from scoter.log_util import custom_logger
 from scoter.meta import FileNotFound, PathAlreadyExists, ScoterError
 from scoter.pre_exec import dump_nlloc_obs_all
 from scoter.post_exec import harvest, export_events, export_residuals,\
-    export_static, export_ssst
+    export_static, export_ssst, plot_convergence, plot_residuals
 from scoter.util import data_file
 
 
@@ -38,7 +38,10 @@ subcommand_descriptions = {
     'export-events': 'export resulting hypocenters',
     'export-residuals': 'export travel-time residuals',
     'export-static': 'export static station terms',
-    'export-ssst': 'export source-specific station terms'}
+    'export-ssst': 'export source-specific station terms',
+    'plot-convergence': 'plot travel-time residual SMAD/MAD versus '
+                        'iteration number (i.e. convergence curve)',
+    'plot-residuals': 'plot travel-time residuals heat-map'}
 
 
 subcommand_usages = {
@@ -48,13 +51,17 @@ subcommand_usages = {
     'list-steps': 'list-steps [options]',
     'go': 'go <configfile> --steps=<steps> [options]',
     'harvest': 'harvest <rundir> [options]',
-    'export-events': 'export-events <rundir> --step=<step> '
-                     '[--format=<fmt> --output=<filename>]',
+    'export-events': 'export-events <rundir> --step=<step> [options]',
     'export-residuals': 'export-residuals <rundir> --station=<station> '
                         '--phase=<phase> [--output=<filename>]',
     'export-static': 'export-static <rundir> [--output=<filename>]',
     'export-ssst': 'export-ssst <rundir> --station=<station> '
-                   '--phase=<phase> [--output=<filename>]'}
+                   '--phase=<phase> [--output=<filename>]',
+    'plot-convergence': 'plot-convergence <rundir> --step=<B|C> [options]',
+    'plot-residuals': 'plot-residuals <rundir> --steps=<steps> '
+                      '--phase=<phase> '
+                      '--distances=<dist_min:dist_max:dist_bin_width> '
+                      '--residuals=<res_min:res_max:res_bin_width> [options]'}
 
 
 subcommand = subcommand_descriptions.keys()
@@ -75,6 +82,8 @@ Subcommands:
     export-residuals   {export_residuals}
     export-static      {export_static}
     export-ssst        {export_ssst}
+    plot-convergence   {plot_convergence}
+    plot-residuals     {plot_residuals}
 
 To get further help and a list of available options for any subcommand run:
 
@@ -109,7 +118,13 @@ def add_common_options(parser):
              'running operation.')
 
 
-# ---------- Create the top-level parser --------------------------------------
+def add_option_output(parser):
+    parser.add_argument(
+        '--output', dest='filename', metavar='FILENAME',
+        help='write output to FILENAME.')
+
+
+# ---------- Create the top-level parser -------------------------------
 
 parser = argparse.ArgumentParser(
     prog=progname,
@@ -135,7 +150,7 @@ def create_subcommand_parser(subcommand, common_opts=True):
     return parser_scmd
 
 
-# ---------- Subcommand "init" ------------------------------------------------
+# ---------- Subcommand "init" -----------------------------------------
 
 def command_init(args):
     fn = data_file('config.sf')
@@ -154,7 +169,7 @@ parser_init.add_argument(
 parser_init.set_defaults(func=command_init)
 
 
-# ---------- Subcommand "dump-obs" --------------------------------------------
+# ---------- Subcommand "dump-obs" -------------------------------------
 
 def command_dump_obs(args):
     setup_logging(levelname=args.loglevel)
@@ -189,52 +204,44 @@ parser_dump_obs.add_argument('bulletin-files', help=argparse.SUPPRESS)
 named_dump_obs = parser_dump_obs.add_argument_group('required named arguments')
 
 named_dump_obs.add_argument(
-    '--format',
-    required=True, metavar='FORMAT', choices=('QuakeML', 'Geofon'),
-    help='assume input files are of given FORMAT. Choices: '
-         '"QuakeML", "Geofon".')
+    '--format', required=True, metavar='FORMAT', choices=('QuakeML', 'Geofon'),
+    help='assume input files are of given FORMAT. Choices: "QuakeML", '
+         '"Geofon".')
 
 named_dump_obs.add_argument(
-    '--output-dir',
-    dest='output_dir', required=True, metavar='DIR',
-    help='set output directory to DIR to save NonLinLoc phase '
-         'files (NLLOC_OBS.')
+    '--output-dir', dest='output_dir', required=True, metavar='DIR',
+    help='set output directory to DIR to save NonLinLoc phase files '
+         '(NLLOC_OBS.')
 
 named_dump_obs.add_argument(
-    '--events-path',
-    '--event-path',
-    dest='events_path', required=True, metavar='FILENAME',
-    help='write pyrocko events to FILENAME.')
+    '--events-path', '--event-path', dest='events_path', required=True,
+    metavar='FILENAME', help='write pyrocko events to FILENAME.')
 
 # Optional args
 parser_dump_obs.add_argument(
-    '--delimiter-str',
-    '--delimiter',
-    dest='delimiter_str', metavar='DELIMITER',
+    '--delimiter-str', '--delimiter', dest='delimiter_str',
+    metavar='DELIMITER',
     help='network code and station code separator character. Used to join '
          'network and station codes when NLLOC_OBS files are written.')
 
 parser_dump_obs.add_argument(
-    '--prefix',
-    default="",
+    '--prefix', default="",
     help='if specified, all output filenames will begin with that prefix; '
          'otherwise, there will be no prefix.')
 
 parser_dump_obs.add_argument(
-    '--suffix',
-    default='.nll',
+    '--suffix', default='.nll',
     help='if specified, all output filenames will end with that suffix; '
          'otherwise, a default prefix (.nll) is used.')
 
 parser_dump_obs.add_argument(
-    '--force',
-    action='store_true',
+    '--force', action='store_true',
     help='overwrite existing files (i.e. pyrocko events, NLLOC_OBS files).')
 
 parser_dump_obs.set_defaults(func=command_dump_obs)
 
 
-# ---------- Subcommand "list-steps" ------------------------------------------
+# ---------- Subcommand "list-steps" -----------------------------------
 
 def command_list_steps(args):
     s = ''' Step     Description
@@ -250,7 +257,7 @@ parser_list_steps = create_subcommand_parser('list-steps', common_opts=False)
 parser_list_steps.set_defaults(func=command_list_steps)
 
 
-# ---------- Subcommand "go" --------------------------------------------------
+# ---------- Subcommand "go" -------------------------------------------
 
 def command_go(args):
     setup_logging(levelname=args.loglevel)
@@ -268,36 +275,35 @@ parser_go.add_argument('configfile', help=argparse.SUPPRESS)
 
 # Required named args
 named_go = parser_go.add_argument_group('required named arguments')
+
 named_go.add_argument(
-    '--steps',
-    required=True, metavar='STEPS',
+    '--steps', required=True, metavar='STEPS',
     help='comma separated list of location steps in {progname} syntax. '
          'Run "{progname} list-steps" for description of named location '
          'steps.'.format(progname=progname))
 
 # Optional args
 parser_go.add_argument(
-    '--parallel',
-    dest='nparallel', type=int, default=1, metavar='NPARALLEL',
+    '--parallel', dest='nparallel', type=int, default=1, metavar='NPARALLEL',
     help='set number of events to process in parallel. '
          'If -1 is given all processors are used (default: 1).')
 
 parser_go.add_argument(
-    '--force',
-    action='store_true',
+    '--force', action='store_true',
     help='overwrite existing subdirectories of main rundir.')
 
 parser_go.set_defaults(func=command_go)
 
 
-# ---------- Subcommand "harvest" ---------------------------------------------
+# ---------- Subcommand "harvest" --------------------------------------
 
 def command_harvest(args):
     setup_logging(levelname=args.loglevel)
     try:
         harvest(
             args.rundir, force=args.force, nparallel=args.nparallel,
-            show_progress=args.show_progress, weed=args.weed)
+            show_progress=args.show_progress, weed=args.weed,
+            last_iter=args.last_iter)
     except PathAlreadyExists as e:
         logger.warn(e)
 
@@ -309,31 +315,27 @@ parser_harvest.add_argument('rundir', help=argparse.SUPPRESS)
 
 # Optional args
 parser_harvest.add_argument(
-    '--force',
-    action='store_true',
+    '--force', action='store_true',
     help='overwrite existing harvest directory.')
 
 parser_harvest.add_argument(
-    '--parallel',
-    dest='nparallel', type=int, default=1, metavar='NPARALLEL',
+    '--parallel', dest='nparallel', type=int, default=1, metavar='NPARALLEL',
     help='set number of events to process in parallel. '
          'If -1 is given all processors are used (default: 1).')
 
 parser_harvest.add_argument(
-    '--weed',
-    action='store_true',
-    help='weed out events relocated until the last static/ssst iteration.')
+    '--weed', action='store_true',
+    help='weed out events relocated until the last iteration in '
+         'iterative steps.')
+
+parser_harvest.add_argument(
+    '--last-iter', '--last-iteration', dest='last_iter', action='store_true',
+    help='cache only last iteration in iterative steps.')
 
 parser_harvest.set_defaults(func=command_harvest)
 
 
-# ---------- Subcommand "export-static" ---------------------------------------
-
-def add_option_output(parser):
-    parser.add_argument(
-        '--output',
-        dest='filename', metavar='FILENAME', help='write output to FILENAME.')
-
+# ---------- Subcommand "export-static" --------------------------------
 
 def command_export_static(args):
     try:
@@ -354,7 +356,7 @@ add_option_output(parser_export_static)
 parser_export_static.set_defaults(func=command_export_static)
 
 
-# ---------- Subcommand "export-ssst" -----------------------------------------
+# ---------- Subcommand "export-ssst" ----------------------------------
 
 def command_export_ssst(args):
     try:
@@ -374,13 +376,11 @@ parser_export_ssst.add_argument('rundir', help=argparse.SUPPRESS)
 named_ssst = parser_export_ssst.add_argument_group('required named arguments')
 
 named_ssst.add_argument(
-    '--station',
-    required=True, dest='station_label', metavar='STATIONLABEL',
+    '--station', required=True, dest='station_label', metavar='STATIONLABEL',
     help='export ssst values for given STATIONLABEL')
 
 parser_export_ssst.add_argument(
-    '--phase',
-    required=True, dest='phase_label', metavar='PHASELABEL',
+    '--phase', required=True, dest='phase_label', metavar='PHASELABEL',
     help='export ssst values for given PHASELABEL.')
 
 # Optional args
@@ -389,7 +389,7 @@ add_option_output(parser_export_ssst)
 parser_export_ssst.set_defaults(func=command_export_ssst)
 
 
-# ---------- Subcommand "export-residual" -------------------------------------
+# ---------- Subcommand "export-residual" ------------------------------
 
 def command_export_residuals(args):
     try:
@@ -411,13 +411,11 @@ named_residual = parser_export_residuals.add_argument_group(
     'required named arguments')
 
 named_residual.add_argument(
-    '--station',
-    required=True, dest='station_label', metavar='STATIONLABEL',
+    '--station', required=True, dest='station_label', metavar='STATIONLABEL',
     help='export travel-time residuals for given STATIONLABEL.')
 
 named_residual.add_argument(
-    '--phase',
-    required=True, dest='phase_label', metavar='PHASELABEL',
+    '--phase', required=True, dest='phase_label', metavar='PHASELABEL',
     help='export travel-time residuals for given PHASELABEL.')
 
 # Optional args
@@ -426,11 +424,12 @@ add_option_output(parser_export_residuals)
 parser_export_residuals.set_defaults(func=command_export_residuals)
 
 
-# ---------- Subcommand "export-events" ---------------------------------------
+# ---------- Subcommand "export-events" --------------------------------
 
 def command_export_events(args):
     try:
-        export_events(args.rundir, args.step, args.fmt, args.filename)
+        export_events(
+            args.rundir, args.step, args.i_iter, args.fmt, args.filename)
     except (ScoterError, FileNotFound) as e:
         logger.warn(e)
 
@@ -446,15 +445,19 @@ named_events = parser_export_events.add_argument_group(
     'required named arguments')
 
 named_events.add_argument(
-    '--step',
-    required=True, dest='step', metavar='LOCATIONSTEP',
+    '--step', required=True, dest='step', metavar='LOCATIONSTEP',
     help='location step in {progname} syntax. Run "{progname} list-steps" '
          'for description of named location steps.'.format(progname=progname))
 
 # Optional args
 parser_export_events.add_argument(
-    '--format',
-    dest='fmt', metavar='FORMAT', default='columns',
+    '--iteration', '--iter', dest='i_iter', type=int, default=-1,
+    metavar='IITERATION',
+    help='export events for given IITERATION. If -1 is given, it exports '
+         'events from last iteration (default: -1).')
+
+parser_export_events.add_argument(
+    '--format', dest='fmt', metavar='FORMAT', default='columns',
     choices=('pyrocko', 'columns'),
     help='export events in given FORMAT. Choices: "columns", "pyrocko" '
          '(default: columns).')
@@ -462,6 +465,124 @@ parser_export_events.add_argument(
 add_option_output(parser_export_events)
 
 parser_export_events.set_defaults(func=command_export_events)
+
+
+# ---------- Subcommand "plot-convergence" -----------------------------
+
+def command_plot_convergence(args):
+    try:
+        plot_convergence(
+            args.rundir, args.step, statistic=args.statistic, save=args.save,
+            fmts=args.fmts, dpi=args.dpi)
+    except (ScoterError, ValueError) as e:
+        logger.warn(e)
+
+
+parser_plot_conv = create_subcommand_parser(
+    'plot-convergence', common_opts=False)
+
+# Positional args
+parser_plot_conv.add_argument('rundir', help=argparse.SUPPRESS)
+
+# Required named args
+named_plot_conv = parser_plot_conv.add_argument_group(
+    'required named arguments')
+
+named_plot_conv.add_argument(
+    '--step', required=True, dest='step', metavar='LOCATIONSTEP',
+    help='location step in {progname} syntax. Run "{progname} list-steps" '
+         'for description of named location steps.'.format(progname=progname))
+
+# Optional args
+parser_plot_conv.add_argument(
+    '--statistic', '--stat', dest='statistic', metavar='STATISTIC',
+    default='SMAD', choices=('SMAD', 'MAD'),
+    help='measure of statistical dispersion. Choices: "MAD" (median '
+         'absolute deviation), "SMAD" (scaled MAD) (default: SMAD).')
+
+parser_plot_conv.add_argument(
+    '--save', action='store_true', default=False, help='save figure to file.')
+
+parser_plot_conv.add_argument(
+    '--format', '--formats', dest='fmts', default='pdf', metavar='FORMAT(S)',
+    help='comma-separated list of output formats (default: pdf).')
+
+parser_plot_conv.add_argument(
+    '--dpi', type=float, default=120.,
+    help='DPI setting for raster formats (default=120).')
+
+parser_plot_conv.set_defaults(func=command_plot_convergence)
+
+
+# ---------- Subcommand "plot-residuals" -------------------------------
+
+def command_plot_residuals(args):
+    steps = [x.strip().upper() for x in args.steps.split(',')]
+    dmin, dmax, dd = map(float, args.distances.split(':'))
+    rmin, rmax, dr = map(float, args.residuals.split(':'))
+    try:
+        plot_residuals(
+            args.rundir, steps, args.phase_label, dmin, dmax, dd, rmin,
+            rmax, dr, interpolation=args.interpolation, cmap=args.cmap,
+            save=args.save, fmts=args.fmts, dpi=args.dpi)
+    except (ScoterError, FileNotFound) as e:
+        logger.warn(e)
+
+
+parser_plot_res = create_subcommand_parser(
+    'plot-residuals', common_opts=False)
+
+# Positional args
+parser_plot_res.add_argument('rundir', help=argparse.SUPPRESS)
+
+# Required named args
+named_plot_res = parser_plot_res.add_argument_group(
+    'required named arguments')
+
+named_plot_res.add_argument(
+    '--steps', required=True, metavar='STEPS',
+    help='comma separated list of location steps in {progname} syntax. '
+         'Run "{progname} list-steps" for description of named location '
+         'steps.'.format(progname=progname))
+
+named_plot_res.add_argument(
+    '--phase', required=True, dest='phase_label', metavar='PHASELABEL',
+    help='plot travel-time residuals heat-map for given PHASELABEL.')
+
+named_plot_res.add_argument(
+    '--distances', required=True, metavar='dist_min:dist_max:dist_bin_width',
+    help='distance range and bins width in either [deg] (GLOBAL mode) or '
+         '[km] (Non-GLOBAL mode).')
+
+named_plot_res.add_argument(
+    '--residuals', required=True, metavar='res_min:res_max:res_bin_width',
+    help='residual range and bin width in [sec].')
+
+# Optional args
+parser_plot_res.add_argument(
+    '--interpolation', default='nearest',
+    help='one of matplotlib.pyplot.imshow acceptable values for '
+         'interpolation (default: nearest)')
+
+parser_plot_res.add_argument(
+    '--cmap', default='plasma',
+    help='one of matplotlib.pyplot.imshow acceptable values for cmap '
+         '(default: plasma)')
+
+parser_plot_res.add_argument(
+    '--save', action='store_true', default=False, help='save figure to file.')
+
+parser_plot_res.add_argument(
+    '--format', '--formats', dest='fmts', default='pdf', metavar='FORMAT(S)',
+    help='comma-separated list of output formats (default: pdf).')
+
+parser_plot_res.add_argument(
+    '--dpi', type=float, default=120.,
+    help='DPI setting for raster formats (default=120).')
+
+parser_plot_res.set_defaults(func=command_plot_residuals)
+
+# ----------------------------------------------------------------------
 
 
 if __name__ == '__main__':

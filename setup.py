@@ -44,4 +44,5 @@ setup(
     package_data={
         packname: [
             'data/config.sf',
-            'data/FlinnEngdahl_seismic.pickle']})
+            'data/FlinnEngdahl_seismic.pickle',
+            'data/scoter.mplstyle']})

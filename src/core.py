@@ -74,7 +74,7 @@ class DatasetConfig(HasPaths):
         """Extracts a list of :class:`pyrocko.model.Event` objects."""
 
         if not op.exists(self.events_path):
-            raise FileNotFound('cannot access "{}": no such file'.format(
+            raise FileNotFound("No such file or directory: '{}'".format(
                 self.events_path))
 
         logger.debug("Loading events from file '{}'".format(self.events_path))
@@ -84,7 +84,7 @@ class DatasetConfig(HasPaths):
         """Returns a list of :class:`meta.Station` objects."""
 
         if not op.exists(self.stations_path):
-            raise FileNotFound('cannot access "{}": no such file'.format(
+            raise FileNotFound("No such file or directory '{}'".format(
                 self.stations_path))
 
         logger.debug(
@@ -130,7 +130,7 @@ class DatasetConfig(HasPaths):
             for fn in fns.values():
                 if not op.exists(fn):
                     errmess.append(
-                        'cannot access "{}": no such file').format(fn)
+                        "No such file or directory: '{}'").format(fn)
 
             return errmess
 
@@ -221,11 +221,20 @@ class StaticConfig(Object):
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
-        self.phase_map = self.get_phase_map()
+        self.phase_map = self._get_phase_map()
         self.phase_map_rev = None
+        self._niter_strlen = self._get_niter_strlen()
 
-    def get_phase_map(self):
+    def _get_phase_map(self):
         return {x: x for x in self.phase_list}
+
+    def _get_niter_strlen(self):
+        counter = 0
+        dummy = self.niter
+        while (dummy > 0):
+            dummy //= 10
+            counter += 1
+        return counter
 
 
 # ----- Source-specific station terms configuration. -----
@@ -242,21 +251,30 @@ class SourceSpecificConfig(Object):
 
     def __init__(self, **kwargs):
         Object.__init__(self, **kwargs)
-        self.phase_map = self.get_phase_map()
+        self.phase_map = self._get_phase_map()
         self.phase_map_rev = None
-        self.radii = self.get_cutoff_distances()
-        self.nlinks = self.get_nlinks()
+        self.radii = self._get_cutoff_distances()
+        self.nlinks = self._get_nlinks()
+        self._niter_strlen = self._get_niter_strlen()
 
-    def get_phase_map(self):
+    def _get_phase_map(self):
         return {x: x for x in self.phase_list}
 
-    def get_cutoff_distances(self):
+    def _get_cutoff_distances(self):
         return loglinspace(
             self.start_cutoff_dist, self.end_cutoff_dist, self.niter)
 
-    def get_nlinks(self):
+    def _get_nlinks(self):
         return np.round(loglinspace(
             self.start_nlinks_max, self.end_nlinks_max, self.niter))
+
+    def _get_niter_strlen(self):
+        counter = 0
+        dummy = self.niter
+        while (dummy > 0):
+            dummy //= 10
+            counter += 1
+        return counter
 
 
 # ----- Station terms config -----
@@ -314,8 +332,8 @@ class NLLocTrans(Object):
                     self.second_paral = kwargs.pop('second_paral')
             except KeyError as e:
                 raise ScoterError(
-                    'missing argument to NLLocTrans type "%s": %s' %
-                    (self.trans_type, e))
+                    "missing argument to NLLocTrans type '{}': {}".format(
+                        (self.trans_type, e)))
 
     def __str__(self):
         params = ['TRANS', '{self.trans_type}']
@@ -559,6 +577,7 @@ def _get_single_target(event, config):
 
     if config.network_config.station_selection is True:
         slabels = []
+        slabels_exclude = []
         for line in pha_lines:
             slabel = line.split()[0]
             if slabel in slabels:
@@ -573,8 +592,10 @@ def _get_single_target(event, config):
             if (
                 config.network_config.station_dist_min <= dist_deg <=
                     config.network_config.station_dist_max):
-                # station is in the desired surface distance range.
+                # station is out of the desired surface distance range.
                 slabels.append(slabel)
+            else:
+                slabels_exclude.append(slabel)
 
     else:
         # no station selection.
@@ -590,6 +611,7 @@ def _get_single_target(event, config):
     return Target(
         name=event.name,
         station_labels=slabels,
+        station_labels_exclude=slabels_exclude,
         station_delays=config.dataset_config.starting_delays_path)
 
 
@@ -822,6 +844,7 @@ class ScoterRunner(object):
 
     def _run_static(self):
         niter = self.config.station_terms_config.static_config.niter
+        strlen = self.config.station_terms_config.static_config._niter_strlen
 
         if niter <= 0:
             return
@@ -848,7 +871,9 @@ class ScoterRunner(object):
             # with open(fn_delays, 'w') as f:
             #     f.write(stream)
 
-            fn = pjoin(static_dir, '{:02}_1_delay.pickle'.format(iiter+1))
+            fn = pjoin(
+                static_dir, '{iiter:0{strlen:d}d}_1_delay.pickle'.format(
+                    iiter=iiter+1, strlen=strlen))
             dump_pickle(new_delays, fn)
 
             # --- Step 2: set new locdir and new station terms. ---
@@ -871,6 +896,7 @@ class ScoterRunner(object):
 
     def _run_ssst(self):
         niter = self.config.station_terms_config.ssst_config.niter
+        strlen = self.config.station_terms_config.ssst_config._niter_strlen
 
         if niter <= 0:
             return
@@ -896,7 +922,9 @@ class ScoterRunner(object):
             #             f.write('{}\n'.format(delay))
 
             new_delays = dict((x.name, x.station_delays) for x in new_targets)
-            fn = pjoin(ssst_dir, '{:02}_1_delay.pickle'.format(iiter+1))
+            fn = pjoin(
+                ssst_dir, '{iiter:0{strlen:d}d}_1_delay.pickle'.format(
+                    iiter=iiter+1, strlen=strlen))
             dump_pickle(new_delays, fn)
 
             # --- Step 2: set new locdir and new targets. ---

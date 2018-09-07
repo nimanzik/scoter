@@ -1,34 +1,38 @@
 # -*- coding: utf-8 -*-
 
 from collections import defaultdict, namedtuple, OrderedDict
+from itertools import chain
 import os.path as op
 from os.path import join as pjoin
 import shutil
 import sys
 
+import matplotlib.pyplot as plt
+from mpl_toolkits.axes_grid1 import make_axes_locatable
 import numpy as np
 
 from pyrocko import guts, model
+from pyrocko.parimap import parimap
 from pyrocko.util import ensuredir, ensuredirs, time_to_str
 
 from .core import NAMED_STEPS, HYP_FILE_EXTENSION
+from .geodetic import DEG2M, M2KM, KM2M
 from .ie.nlloc import load_nlloc_hyp
 from .meta import FileNotFound, PathAlreadyExists, ScoterError
 from .parmap import parstarmap
-from .util import dump_pickle, load_pickle
+from .stats import median_absolute_deviation, robust_mad
+from .util import data_file, dump_pickle, load_pickle
 
-
-KM2M = 1000.
 
 np.set_printoptions(nanstr='NaN')
-
-
-def load_config(dirname):
-    fn = pjoin(dirname, 'used_config.yaml')
-    return guts.load(filename=fn)
-
+plt.style.use(['ggplot', data_file('scoter.mplstyle')])
 
 ScoterEvent = namedtuple('ScoterEvent', 'lat lon depth time rms len3 res_dict')
+
+
+def _load_config(rundir):
+    fn = pjoin(rundir, 'used_config.yaml')
+    return guts.load(filename=fn)
 
 
 def _load_one_event(fns, *args):
@@ -38,7 +42,7 @@ def _load_one_event(fns, *args):
         o = e.preferred_origin
         u = o.origin_uncertainty_list[0]
 
-        res_dict = dict((k, v[0]) for k, v in e.arrival_maps.iteritems())
+        res_dict = dict((k, v[::2]) for k, v in e.arrival_maps.iteritems())
 
         dummy_event = ScoterEvent(
             lat=o.latitude.value, lon=o.longitude.value, depth=o.depth.value,
@@ -51,12 +55,26 @@ def _load_one_event(fns, *args):
     return tuple(es)
 
 
-def harvest(rundir, force=False, nparallel=1, show_progress=False, weed=False):
+def _load_cached_data(rundir, step):
+    infile = pjoin(
+        rundir, 'harvest', 'results_{}.pickle'.format(NAMED_STEPS[step]))
 
-    config = load_config(rundir)
+    if not op.exists(infile):
+        raise FileNotFound("No such file or directory: '{}'".format(infile))
+
+    return load_pickle(infile)
+
+
+# ----------------------------------------------------------------------
+
+
+def harvest(
+        rundir, force=False, nparallel=1, show_progress=False, weed=False,
+        last_iter=True):
+
+    config = _load_config(rundir)
     sconfig = config.station_terms_config
 
-    # dumpdir = pjoin(rundir, 'harvest'+(weed and '_weed' or ''))
     dumpdir = pjoin(rundir, 'harvest')
 
     if op.exists(dumpdir):
@@ -74,118 +92,203 @@ def harvest(rundir, force=False, nparallel=1, show_progress=False, weed=False):
     event_names = [ev.name for ev in pyrocko_events]
     basename_tmpl = '%(event_name)s%(ext)s'
 
+    niters = {
+        'A': 1,
+        'B': sconfig.static_config.niter,
+        'C': sconfig.ssst_config.niter}
+
+    niter_strlens = {
+        'A': 0,
+        'B': sconfig.static_config._niter_strlen,
+        'C': sconfig.ssst_config._niter_strlen}
+
+    heads = dict((step, pjoin(rundir, NAMED_STEPS[step])) for step in 'ABC')
+
+    tail_templates = {
+        'A': '',
+        'B': '{iiter:0{strlen:d}d}_2_loc',
+        'C': '{iiter:0{strlen:d}d}_2_loc'}
+
+    resultdirs = defaultdict(list)
+    for step in 'ABC':
+        head = heads[step]
+        if not op.exists(head):
+            niters[step] = 0
+            continue
+
+        niter = niters[step]
+        strlen = niter_strlens[step]
+        for iiter in range(1, niter+1):
+            tail_template = tail_templates[step]
+            tail = tail_template.format(
+                iiter=iiter, strlen=strlen)
+            resultdirs[step].append(pjoin(head, tail))
+
+    # Dictionary sorted by key (A, B, C)
+    resultdirs = OrderedDict(sorted(resultdirs.items(), key=lambda t: t[0]))
+
     task_list = []
-    if weed is True:
-        # pick events remained until last iteration
-        resultdir_A = pjoin(rundir, NAMED_STEPS['A'])   # noqa
-        resultdir_B = pjoin(   # noqa
-            rundir,
-            NAMED_STEPS['B'],
-            '{:02}_2_loc'.format(sconfig.static_config.niter))
-        resultdir_C = pjoin(   # noqa
-            rundir,
-            NAMED_STEPS['C'],
-            '{:02}_2_loc'.format(sconfig.ssst_config.niter))
+    if last_iter is True:
+        # Extract only last iteration of iterative steps
+        if weed is True:
+            # Pick events remained until last iteration
+            for event_name in event_names:
+                fns = []
+                for resultdir_list in resultdirs.values():
+                    resultdir = resultdir_list[-1]
+                    fn = pjoin(resultdir, basename_tmpl % dict(
+                        event_name=event_name,
+                        ext=HYP_FILE_EXTENSION))
+                    fns.append(fn)
 
-        resultdirs = {}
-        for step in 'A B C'.split():
-            dn = eval('resultdir_{}'.format(step))
-            if op.exists(dn):
-                resultdirs[step] = dn
+                if not all([op.exists(x) for x in fns]):
+                    continue
 
-        # Dictionary sorted by key (A, B, C)
-        resultdirs = OrderedDict(
-            sorted(resultdirs.items(), key=lambda t: t[0]))
+                task_list.append((
+                    tuple(fns),
+                    event_name,
+                    config.dataset_config.delimiter_str,
+                    True))
+        else:
+            for event_name in event_names:
+                fns = []
+                for resultdir_list in resultdirs.values():
+                    dummy = []
+                    for resultdir in resultdir_list[-1::-1]:
+                        fn = op.join(resultdir, basename_tmpl % dict(
+                            event_name=event_name,
+                            ext=HYP_FILE_EXTENSION))
 
-        for event_name in event_names:
-            fns = []
-            for resultdir in resultdirs.values():
-                fn = pjoin(resultdir, basename_tmpl % dict(
-                    event_name=event_name,
-                    ext=HYP_FILE_EXTENSION))
-                fns.append(fn)
+                        if op.exists(fn):
+                            dummy.append(fn)
+                            break
+                        else:
+                            dummy.append(None)
 
-            if not all([op.exists(x) for x in fns]):
-                continue
+                    dummy = filter(None, dummy)
 
-            task_list.append((
-                tuple(fns), event_name,
-                config.dataset_config.delimiter_str, True))
-    else:
-        tails = {
-            'A': '',
-            'B': '%(iiter)02d_2_loc',
-            'C': '%(iiter)02d_2_loc'}
-
-        niters = {
-            'A': 1,
-            'B': sconfig.static_config.niter,
-            'C': sconfig.ssst_config.niter}
-
-        resultdirs = {}
-        for step in 'A B C'.split():
-            head = pjoin(rundir, NAMED_STEPS[step])
-            if op.exists(head):
-                resultdirs[step] = op.join(head, tails[step])
-
-        for event_name in event_names:
-            fns = []
-            for step in resultdirs:
-                dummy = []
-                for i in range(niters[step], 0, -1):
-                    fn = op.join(
-                        resultdirs[step] % dict(iiter=i),
-                        basename_tmpl % dict(
-                            event_name=event_name, ext=HYP_FILE_EXTENSION))
-                    if op.exists(fn):
-                        dummy.append(fn)
-                        break
+                    if len(dummy) == 0:
+                        fns.append(None)
                     else:
-                        dummy.append(None)
+                        fns.extend(dummy)
 
-                dummy = filter(None, dummy)
+                if not all(fns):
+                    continue
 
-                if len(dummy) == 0:
-                    fns.append(None)
-                else:
+                task_list.append((
+                    tuple(fns),
+                    event_name,
+                    config.dataset_config.delimiter_str,
+                    True))
+
+        # r = [((N1_A,E1_A), (N1_C,E1_C)), ((N2_A,E2_A), (N2_C,E2_C)), ...]
+        # N: event_name; E: dummy_event; A,C: location steps
+        results = parstarmap(
+            _load_one_event,
+            task_list,
+            nparallel=nparallel,
+            show_progress=show_progress,
+            label='Loading location files')
+
+        # r = [((N1_A,E1_A),(N2_A,E2_A), ...), ((N1_C,E1_C),(N2_C,E2_C), ...)]
+        # N: event_name; E: dummy_event; A,C: location steps
+        results = zip(*results)
+
+        for iresult, result in enumerate(results):
+            step = resultdirs.keys()[iresult]
+            data = {niters[step]: dict(result)}
+            fn = pjoin(dumpdir, 'results_{}.pickle'.format(NAMED_STEPS[step]))
+            dump_pickle(data, fn)
+    else:
+        # Extract all iterations in iterative steps
+        if weed is True:
+            # Pick events remained until last iteration
+            for event_name in event_names:
+                fns = []
+                for resultdir in chain.from_iterable(resultdirs.values()):
+                    fn = pjoin(resultdir, basename_tmpl % dict(
+                        event_name=event_name,
+                        ext=HYP_FILE_EXTENSION))
+                    fns.append(fn)
+
+                if not all([op.exists(x) for x in fns]):
+                    continue
+
+                task_list.append((
+                    tuple(fns),
+                    event_name,
+                    config.dataset_config.delimiter_str,
+                    True))
+        else:
+            for event_name in event_names:
+                fns = []
+                for resultdir_list in resultdirs.values():
+                    dummy = []
+                    for resultdir in resultdir_list:
+                        fn = op.join(resultdir, basename_tmpl % dict(
+                            event_name=event_name,
+                            ext=HYP_FILE_EXTENSION))
+
+                        if op.exists(fn):
+                            dummy.append(fn)
+                        else:
+                            try:
+                                dummy.append(dummy[-1])
+                            except IndexError:
+                                dummy.append(None)
+
                     fns.extend(dummy)
 
-            if not all(fns):
+                if not all(fns):
+                    continue
+
+                task_list.append((
+                    tuple(fns),
+                    event_name,
+                    config.dataset_config.delimiter_str,
+                    True))
+
+        # r = [((N1_A,E1_A),(N1_C1,E1_C1),(N1_C2,E1_C2),...),
+        #      ((N2_A,E2_A),(N2_C1,E2_C1),(N2_C2,E2_C2),...), ...]
+        results = parstarmap(
+            _load_one_event,
+            task_list,
+            nparallel=nparallel,
+            show_progress=show_progress,
+            label='Loading location files')
+
+        # r = [((N1_A,E1_A), (N2_A,E2_A),...),
+        #      ((N1_C1,E1_C1), (N2_C1,E2_C1),...),
+        #      ((N1_C2,E1_C2), (N2_C2,E2_C2),...), ...]
+        results = zip(*results)
+
+        i1 = 0
+        for step in 'ABC':
+            i2 = niters[step]
+
+            if i2 == 0:
                 continue
 
-            task_list.append((
-                tuple(fns), event_name,
-                config.dataset_config.delimiter_str, True))
+            result_list = results[i1:i1+i2]
+            i1 += i2
 
-    # results = [((N_1A,E_1A), (N_1C,E_1C)), ((N_2A,E_2A), (N_2C,E_2C)), ...]
-    # N: event_name; E: dummy_event; A,C: location steps
-    results = parstarmap(
-        _load_one_event,
-        task_list,
-        nparallel=nparallel,
-        show_progress=show_progress,
-        label='Loading location files')
+            data = OrderedDict()
+            for i_result, result in enumerate(result_list):
+                data[i_result+1] = dict(result)
 
-    # results = [((N_1A,E_1A), (N_2A,E_2A),...), ((N_1C,E_1C), (N_2C,E_2C),..)]
-    # N: event_name; E: dummy_event; A,C: location steps
-    results = zip(*results)
-
-    for iresult, result in enumerate(results):
-        d = dict(result)
-        s = resultdirs.keys()[iresult]
-        fn = pjoin(dumpdir, 'results_{}.pickle'.format(NAMED_STEPS[s]))
-        dump_pickle(d, fn)
+            fn = pjoin(dumpdir, 'results_{}.pickle'.format(NAMED_STEPS[step]))
+            dump_pickle(data, fn)
 
 
 def export_static(rundir, filename=None):
-    config = load_config(rundir)
+    config = _load_config(rundir)
     sconfig = config.station_terms_config
 
     infile = pjoin(rundir, NAMED_STEPS['B'], '{:02}_1_delay.pickle'.format(
         sconfig.static_config.niter))
 
     if not op.exists(infile):
-        raise FileNotFound('cannot access "{}": no such file'.format(infile))
+        raise FileNotFound("No such file or directory: '{}'".format(infile))
 
     delays = load_pickle(infile)
 
@@ -214,7 +317,7 @@ def export_static(rundir, filename=None):
 
 
 def export_ssst(rundir, station_label, phase_label, filename=None):
-    config = load_config(rundir)
+    config = _load_config(rundir)
     sconfig = config.station_terms_config
 
     infile_d = pjoin(
@@ -230,15 +333,14 @@ def export_ssst(rundir, station_label, phase_label, filename=None):
             err_msgs.append(infile)
 
     if err_msgs:
-        raise FileNotFound('cannot access "{}": no such file'.format(
+        raise FileNotFound("No such file or directory: '{}'".format(
             ', '.join(err_msgs)))
 
-    phase_labels = [phase_label]
-    for pid in config.nlloc_config.phaseid_list:
-        if (phase_label == pid.std_phase or
-                phase_label in pid.phase_code_list):
-
-            phase_labels.extend(pid.phase_code_list)
+    phase_labels = set()
+    phase_labels.add(phase_label)
+    if phase_label in sconfig.ssst_config.phase_map:
+        std_phase = sconfig.ssst_config.phase_map[phase_label]
+        phase_labels.update(sconfig.ssst_config.phase_map_rev[std_phase])
 
     # a dictionary mapping event names to station delays
     event_to_delays = load_pickle(infile_d)
@@ -276,14 +378,16 @@ def export_ssst(rundir, station_label, phase_label, filename=None):
 
 
 def export_residuals(rundir, station_label, phase_label, filename=None):
-    config = load_config(rundir)
+    config = _load_config(rundir)
 
-    phase_labels = [phase_label]
+    # Mapping of phase labels
+    phase_labels = set()
+    phase_labels.add(phase_label)
     for pid in config.nlloc_config.phaseid_list:
-        if (phase_label == pid.std_phase or
-                phase_label in pid.phase_code_list):
-
-            phase_labels.extend(pid.phase_code_list)
+        if ((phase_label == pid.std_phase) or
+                (phase_label in pid.phase_code_list)):
+            # Get the phase
+            phase_labels.update(pid.phase_code_list)
 
     if filename is None:
         out = sys.stdout
@@ -294,6 +398,13 @@ def export_residuals(rundir, station_label, phase_label, filename=None):
     print >>out, '# station label: {}; phase label: {}'.format(
         station_label, phase_label)
 
+    def f(hypo):
+        res_one_event = []
+        for (sta, pha), (res, _) in hypo.res_dict.iteritems():
+            if (sta == station_label) and (pha in phase_labels):
+                res_one_event.append(res)
+        return res_one_event
+
     step_to_res = defaultdict(list)
     for step in ['A', 'B', 'C']:
         infile = pjoin(
@@ -302,25 +413,29 @@ def export_residuals(rundir, station_label, phase_label, filename=None):
         if not op.exists(infile):
             continue
 
-        event_to_hypo = load_pickle(infile)
+        data = load_pickle(infile)
 
-        for hypo in event_to_hypo.itervalues():
-            for (sta, pha), res in hypo.res_dict.iteritems():
-                if sta == station_label and pha in phase_labels:
-                    step_to_res[step].append(res)
+        for event_to_hypo in data.itervalues():
+            res_one_iter = []
+            for res_one_event in parimap(f, event_to_hypo.itervalues()):
+                res_one_iter.extend(res_one_event)
+            step_to_res[step].append(res_one_iter)
 
     # Dictionary sorted by key (A, B, C)
     step_to_res = OrderedDict(sorted(step_to_res.items(), key=lambda t: t[0]))
 
-    ncols = len(step_to_res.keys())
-    nrows = max([len(v) for v in step_to_res.values()])
+    ncols = sum([len(x) for x in step_to_res.itervalues()])
+    nrows = max([len(y) for x in step_to_res.itervalues() for y in x])
 
     a = np.empty((nrows, ncols), dtype=np.float)
     a[:] = np.NaN
 
-    for j, (step, res_list) in enumerate(step_to_res.iteritems()):
-        i = len(res_list)
-        a[:i, j] = res_list
+    j = 0
+    for step, res_lists in step_to_res.iteritems():
+        for res_list in res_lists:
+            i = len(res_list)
+            a[:i, j] = res_list
+            j += 1
 
     hdr = 'location steps: {}'.format(
         ', '.join([NAMED_STEPS[x] for x in step_to_res.keys()]))
@@ -331,18 +446,20 @@ def export_residuals(rundir, station_label, phase_label, filename=None):
         out.close()
 
 
-def export_events(rundir, step, fmt, filename=None):
+def export_events(rundir, step, i_iter=-1, fmt='columns', filename=None):
 
     if fmt not in ['pyrocko', 'columns']:
         raise ScoterError('unsupported events file format: "{}"'.format(fmt))
 
-    infile = pjoin(
-        rundir, 'harvest', 'results_{}.pickle'.format(NAMED_STEPS[step]))
+    step = step.upper()
+    data = _load_cached_data(rundir, step)
+    i_iter = i_iter <= 0 and len(data) or i_iter
 
-    if not op.exists(infile):
-        raise FileNotFound('cannot access "{}": no such file'.format(infile))
+    try:
+        event_to_hypo = data[i_iter]
+    except KeyError:
+        raise ScoterError('invalid iteration number for step {}'.format(step))
 
-    event_to_hypo = load_pickle(infile)
     event_to_hypo = OrderedDict(
         sorted(event_to_hypo.items(), key=lambda t: t[0]))
 
@@ -378,3 +495,224 @@ def export_events(rundir, step, fmt, filename=None):
 
     if out is not sys.stdout:
         out.close()
+
+
+def plot_convergence(
+        rundir, step, statistic='SMAD', save=False, fmts=('pdf',), dpi=120.):
+    """
+    Plot convergence curve for iteerative steps.
+
+    Parameters
+    ----------
+    rundir : str
+        Full or relative path and name for run directory, where the
+        output files and cached results are stored.
+    step : str {B', 'C'}
+        Iterative named location step in SCOTER syntax.
+    statistic : str {'SMAD', 'MAD'}
+        Measure of statistical dispersion.
+    save : bool
+        Whether to save figure to file (default: False).
+    fmts : list of str
+        List of output formats (default: ['pdf']).
+    dpi : float
+        DPI setting for raster format (default: 120).
+    """
+
+    step = step.upper()
+    if step.upper() == 'A':
+        raise ScoterError(
+            'convergence curve should be plotted for iterative steps')
+
+    if statistic.upper() not in ('MAD', 'SMAD'):
+        raise ValueError("invalid statistic: '{}'".format(statistic))
+
+    if isinstance(fmts, str):
+        fmts = fmts.split(',')
+
+    for fmt in fmts:
+        if fmt not in ['pdf', 'png']:
+            raise ScoterError("unavailable output format: '{}'".format(fmt))
+
+    data = _load_cached_data(rundir, step)
+    conf = _load_config(rundir)
+
+    if step == 'B':
+        conf_s = conf.station_terms_config.static_config
+    else:
+        conf_s = conf.station_terms_config.ssst_config
+
+    phase_labels = set()
+    for phase in conf_s.phase_list:
+        phase_labels.add(phase)
+        std_phase = conf_s.phase_map.get(phase, None)
+        phase_labels.update(conf_s.phase_map_rev.get(std_phase, None) or [])
+
+    def f(i_iter):
+        event_to_hypo = data[i_iter]
+        res_list = []
+        for hypo in event_to_hypo.itervalues():
+            for (sta, pha), (res, _) in hypo.res_dict.iteritems():
+                if pha in phase_labels:
+                    res_list.append(res)
+
+        if statistic.upper() == 'MAD':
+            return (i_iter, median_absolute_deviation(res_list))
+        return (i_iter, robust_mad(res_list))
+
+    r = parimap(f, data.keys())
+    x, y = zip(*r)
+
+    fig = plt.figure()
+    ax = fig.add_subplot(111)
+    ax.plot(x, y, '-o',)
+    ax.set_xlabel('Iteration Number')
+    ax.set_ylabel('Travel-Time Residual {} [s]'.format(statistic))
+    ax.set_xticks(np.arange(x[0], x[-1]+1, len(x)//10))
+    if save:
+        for fmt in fmts:
+            fname = 'convergence_curve_{}.{}'.format(NAMED_STEPS[step], fmt)
+            fig.savefig(fname, dpi=dpi)
+        plt.close()
+    else:
+        plt.show()
+
+
+def plot_residuals(
+        rundir, steps, phase_label, dmin, dmax, dd, rmin, rmax, dr,
+        interpolation='nearest', cmap='plasma', save=False, fmts=('pdf',),
+        dpi=120.):
+    """
+    Plot travel-time residual heat-map for the given phase.
+    For iterative steps, the residuals from the last iteration are used.
+
+    Parameters
+    ----------
+    rundir : str
+        Full or relative path and name for run directory, where the
+        output files and cached results are stored.
+    steps : list of str
+        Named location steps in SCOTER syntax ('A', 'B', 'C').
+    phase_label : str
+        Phase label for which the residuals are plotted.
+    dmin : float
+        Minimumin distance either [deg] (GLOBAL mode) or [km]
+        (Non-GLOBAL mode).
+    dmax : float
+        Maximum distance in either [deg] (GLOBAL mode) or [km]
+        (Non-GLOBAL mode).
+    dd : float
+        Distance bins width in either [deg] (GLOBAL mode) or [km]
+        (Non-GLOBAL mode).
+    rmin : float
+        Minimumin travel-time residual in [s].
+    rmax : float
+        Maximum travel-time residual in [s].
+    dr : float
+        Residual bins width in [s].
+    interpolation : str
+        One of :class:`matplotlib.pyplot.imshow` acceptable values for
+        interpolation (default: 'nearest').
+    cmap : str
+        One of :class:`matplotlib.pyplot.imshow` acceptable values for
+        cmap (default: 'plasma').
+    save : bool
+        Whether to save figure to file  (default: False).
+    fmts : list of str
+        List of output formats (default: ['pdf']).
+    dpi : float
+        DPI setting for raster format (default: 120).
+    """
+    config = _load_config(rundir)
+
+    steps = sorted(steps)
+
+    if isinstance(fmts, str):
+        fmts = fmts.split(',')
+
+    for fmt in fmts:
+        if fmt not in ['pdf', 'png']:
+            raise ScoterError("unavailable output format: '{}'".format(fmt))
+
+    # Distance conversion coefficient
+    if config.nlloc_config.trans.trans_type == 'GLOBAL':
+        convcoef = 1
+        xunit = 'deg'
+    else:
+        convcoef = DEG2M * M2KM
+        xunit = 'km'
+
+    # Mapping of phase labels
+    phase_labels = set()
+    phase_labels.add(phase_label)
+    for pid in config.nlloc_config.phaseid_list:
+        if ((phase_label == pid.std_phase) or
+                (phase_label in pid.phase_code_list)):
+            # Get the phase
+            phase_labels.update(pid.phase_code_list)
+
+    def f(hypo):
+        res_dist_one_event = []
+        for (_, pha), (res, dist) in hypo.res_dict.iteritems():
+            if pha in phase_labels:
+                res_dist_one_event.append((res, dist*convcoef))
+        return res_dist_one_event
+
+    step_to_res_dist = {}
+    for step in steps:
+        # Load data from last iteration
+        data = _load_cached_data(rundir, step)
+        event_to_hypo = data[len(data)]
+
+        res_dist_one_step = []
+        for rd in parimap(f, event_to_hypo.itervalues()):
+            res_dist_one_step.extend(rd)
+
+        step_to_res_dist[step] = np.asarray(res_dist_one_step)
+
+    # --- Sort by keys, i.e. A, B, C ---
+    step_to_res_dist = OrderedDict(
+        sorted(step_to_res_dist.items(), key=lambda t: t[0]))
+
+    # --- Plot the residuals ---
+    n_axes = len(step_to_res_dist)
+
+    xbins = np.arange(dmin, dmax, dd)
+    ybins = np.arange(rmin, rmax, dr)
+
+    fig, axes = plt.subplots(nrows=1, ncols=n_axes, squeeze=True)
+    for i_ax, (step, res_dist) in enumerate(step_to_res_dist.items()):
+        try:
+            ax = axes[i_ax]
+        except TypeError:
+            ax = axes
+
+        H, _, _ = np.histogram2d(
+            res_dist[:, 0], res_dist[:, 1], bins=(ybins, xbins))
+
+        for i_col in range(H.shape[1]):
+            H[:, i_col] /= np.max(H[:, i_col])
+
+        cimg = ax.imshow(
+            H, extent=[dmin, dmax, rmin, rmax], interpolation=interpolation,
+            origin='lower', cmap=cmap, aspect='auto')
+
+        if i_ax == n_axes-1:
+            divider = make_axes_locatable(ax)
+            cax = divider.append_axes('right', '5%', pad='3%')
+            cbar = fig.colorbar(cimg, cax=cax)   # noqa
+
+        ax.set_xlabel('Distance [{}]'.format(xunit))
+        ax.set_ylabel('Travel-Time Residual [s]')
+        ax.grid(False)
+
+    # cbar_ax = fig.add_axes([0.91, 0.39, 0.02, 0.45])
+    # cbar = fig.colorbar(cimg, cax=cbar_ax)   # noqa
+
+    if save:
+        for fmt in fmts:
+            fname = 'residuals_catalog_{}.{}'.format(phase_label, fmt)
+            fig.savefig(fname, dpi=dpi)
+        plt.close()
+    else:
+        plt.show()
