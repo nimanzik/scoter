@@ -7,8 +7,7 @@ from os.path import join as pjoin
 import shutil
 import sys
 
-import matplotlib.pyplot as plt
-from mpl_toolkits.axes_grid1 import make_axes_locatable
+from matplotlib import pyplot as plt, gridspec
 import numpy as np
 
 from pyrocko import guts, model
@@ -563,7 +562,7 @@ def plot_convergence(
     r = parimap(f, data.keys())
     x, y = zip(*r)
 
-    fig = plt.figure()
+    fig = plt.figure(figsize=(11, 10))
     ax = fig.add_subplot(111)
     ax.plot(x, y, '-o',)
     ax.set_xlabel('Iteration Number')
@@ -680,12 +679,12 @@ def plot_residuals(
     xbins = np.arange(dmin, dmax, dd)
     ybins = np.arange(rmin, rmax, dr)
 
-    fig, axes = plt.subplots(nrows=1, ncols=n_axes, squeeze=True)
+    fig = plt.figure(figsize=(n_axes*11, 10))
+    gs = gridspec.GridSpec(1, n_axes+1, width_ratios=[10]*n_axes+[0.5])
+    gs.update(wspace=0.15)
+
     for i_ax, (step, res_dist) in enumerate(step_to_res_dist.items()):
-        try:
-            ax = axes[i_ax]
-        except TypeError:
-            ax = axes
+        ax = fig.add_subplot(gs[i_ax])
 
         H, _, _ = np.histogram2d(
             res_dist[:, 0], res_dist[:, 1], bins=(ybins, xbins))
@@ -697,17 +696,16 @@ def plot_residuals(
             H, extent=[dmin, dmax, rmin, rmax], interpolation=interpolation,
             origin='lower', cmap=cmap, aspect='auto')
 
-        if i_ax == n_axes-1:
-            divider = make_axes_locatable(ax)
-            cax = divider.append_axes('right', '5%', pad='3%')
-            cbar = fig.colorbar(cimg, cax=cax)   # noqa
+        if i_ax == 0:
+            ax.set_ylabel('Travel-Time Residual [s]')
 
         ax.set_xlabel('Distance [{}]'.format(xunit))
-        ax.set_ylabel('Travel-Time Residual [s]')
         ax.grid(False)
 
-    # cbar_ax = fig.add_axes([0.91, 0.39, 0.02, 0.45])
-    # cbar = fig.colorbar(cimg, cax=cbar_ax)   # noqa
+    cax = fig.add_subplot(gs[-1])
+    cbar = fig.colorbar(cimg, cax=cax)
+    cbar.set_label('Frequency of Occurance (Normalized)')
+    cax.yaxis.set_label_position('left')
 
     if save:
         for fmt in fmts:

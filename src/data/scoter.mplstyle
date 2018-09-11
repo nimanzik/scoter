@@ -1,3 +1,4 @@
+font.size : 12
 lines.linewidth : 1.5
 lines.markersize : 4.5
 text.usetex : true
