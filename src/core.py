@@ -557,7 +557,7 @@ def _get_single_target(event, config):
     flines = filter(None, flines)
 
     idx_pha_block = [None, None]
-    for i, line in enumerate(flines, 1):
+    for i, line in enumerate(flines):
         if line.startswith('PHASE '):
             idx_pha_block[0] = i
         elif line.startswith('END_PHASE'):
@@ -567,17 +567,14 @@ def _get_single_target(event, config):
         i1, i2 = idx_pha_block
         pha_lines = flines[i1:i2:1]
     else:
-        pattern = re.compile(r'\sGAU\s', re.I)
+        pattern = re.compile(r'\sGAU\s|\sBOX\s|\sFIX\s|\sNONE\s', re.I)
         pha_lines = [x for x in flines if pattern.findall(x)]
 
     if len(pha_lines) == 0:
-        raise ScoterError(
-            'This should not happen. Please check the file "{}"'.format(
-                filename))
+        raise ScoterError("Bulletin file seems corrupt: '{}'".format(filename))
 
     if config.network_config.station_selection is True:
         slabels = []
-        slabels_exclude = []
         for line in pha_lines:
             slabel = line.split()[0]
             if slabel in slabels:
@@ -592,11 +589,8 @@ def _get_single_target(event, config):
             if (
                 config.network_config.station_dist_min <= dist_deg <=
                     config.network_config.station_dist_max):
-                # station is out of the desired surface distance range.
+                # station is in the desired surface distance range
                 slabels.append(slabel)
-            else:
-                slabels_exclude.append(slabel)
-
     else:
         # no station selection.
         slabels = set()
@@ -611,7 +605,6 @@ def _get_single_target(event, config):
     return Target(
         name=event.name,
         station_labels=slabels,
-        station_labels_exclude=slabels_exclude,
         station_delays=config.dataset_config.starting_delays_path)
 
 

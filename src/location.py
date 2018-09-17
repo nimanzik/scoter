@@ -78,6 +78,8 @@ def nlloc_runner(config, keep_scat=False, raise_exception=False):
         show_progress=config.show_progress,
         label=None)
 
+    del g_state[id(config)]
+
 
 def _nlloc_worker(itarget, config_id):
     """

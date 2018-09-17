@@ -38,11 +38,104 @@ class NLLocError(Exception):
     pass
 
 
+def load_nlloc_obs(filename, event_name=None, delimiter_str=None):
+    """
+    Read NonLinLoc phase file (ASCII, NLLoc obsFileType = NLLOC_OBS)
+    to a :class:`~scoter.ie.quakeml.QuakeML` object.
+
+    Parameters
+    ----------
+    filename : str
+        NonLinLoc hypocenter-phase file name.
+
+    event_name : str
+        Event public ID.
+
+    delimiter_str : str or None (default: None)
+        If not `None`, it specifies a string to be used as the network
+        code and station code separator character, i.e. it is used to
+        split the station label in NonLinLoc hypocenter-phase file. If
+        it is absent or `None` (default), the entire station label read
+        is considered as the `station code` and an empty string is
+        assigned to the `network code` for each pick.
+    """
+
+    # Read file contents and remove empty lines
+    flines = open(filename, 'r').read().splitlines()
+    flines = filter(None, flines)
+
+    idx_pha_block = [None, None]
+    for i, line in enumerate(flines):
+        if line.startswith('PHASE '):
+            idx_pha_block[0] = i
+        elif line.startswith('END_PHASE'):
+            idx_pha_block[1] = i
+
+    if len(filter(None, idx_pha_block)) == 2:
+        i1, i2 = idx_pha_block
+        pha_lines = flines[i1:i2:1]
+    else:
+        pattern = re.compile(r'\sGAU\s|\sBOX\s|\sFIX\s|\sNONE\s', re.I)
+        pha_lines = [x for x in flines if pattern.findall(x)]
+
+    if len(pha_lines) == 0:
+        raise NLLocError("Bulletin file seems corrupt: '{}'".format(filename))
+
+    pick_list = []
+    for i, line in enumerate(pha_lines):
+        items = line.split()
+
+        slabel = items[0].strip()
+        try:
+            net, sta = slabel.split(delimiter_str)
+        except ValueError:
+            net, sta = '', slabel
+
+        cha = items[2].strip()
+        onset = ONSETS_LOAD.get(items[3].lower(), None)
+        plabel = items[4].strip()
+
+        tpick_str = WSPACE.join(items[6:9])
+        try:
+            tpick = str_to_time(tpick_str, format='%Y%m%d %H%M %S.OPTFRAC')
+        except TimeStrError:
+            mn = items[7][2:]
+            hrmn = '00' + mn
+            tpick_str = WSPACE.join((items[6], hrmn, items[8]))
+            tpick = str_to_time(tpick_str, format='%Y%m%d %H%M %S.OPTFRAC')
+            tpick += 24 * 3600   # add one day
+
+        # --- Create QuakeML attributes ---
+
+        waveform_id = WaveformStreamID(
+            network_code=net, station_code=sta, channel_code=cha,
+            resource_uri='')
+
+        phase = Phase(code=plabel)
+        tpick = TimeQuantity(value=tpick)
+
+        dummy_id = 'smi:local/{}'.format(i)
+
+        # Pick attribute
+        pick_list.append(Pick(
+            public_id=dummy_id, time=tpick, onset=onset, phase_hint=phase,
+            waveform_id=waveform_id))
+
+    # ------- Create quakeml.Event object -------
+
+    public_id = 'smi:local/{}'.format(event_name or 'NotSet')
+    event = Event(public_id=public_id, origin_list=[], pick_list=pick_list)
+    event_parameters = EventParameters(
+        public_id='smi:local/EventParameters', event_list=[event])
+
+    return QuakeML(event_parameters=event_parameters)
+
+
 def load_nlloc_hyp(
         filename, event_name=None, delimiter_str=None, add_arrival_maps=False):
     """
-    Reads a NonLinLoc hypocenter-phase file to a
-    :class:`~scoter.ie.quakeml.QuakeML` object.
+    Read NonLinLoc hypocenter-phase file (ASCII, FileExtension=*.hyp)
+    to a :class:`~scoter.ie.quakeml.QuakeML` object.
 
     Parameters
     ----------
@@ -258,7 +351,6 @@ def load_nlloc_hyp(
             net, sta = '', slabel
 
         cha = items[2].strip()
-
         onset = ONSETS_LOAD.get(items[3].lower(), None)
         plabel = items[4].strip()
 
@@ -291,8 +383,8 @@ def load_nlloc_hyp(
 
         # Pick attribute
         pick = Pick(
-            public_id=dummy_id, time=tpick, onset=onset,
-            phase_hint=phase, waveform_id=waveform_id)
+            public_id=dummy_id, time=tpick, onset=onset, phase_hint=phase,
+            waveform_id=waveform_id)
 
         pick_list.append(pick)
 
@@ -317,25 +409,20 @@ def load_nlloc_hyp(
         quality=origin_quality, evaluation_status=evaluation_status)
 
     event = Event(
-        public_id=public_id,
-        origin_list=[origin],
-        pick_list=pick_list)
+        public_id=public_id, origin_list=[origin], pick_list=pick_list)
 
     if add_arrival_maps:
         event.arrival_maps = arrival_maps
 
     event_parameters = EventParameters(
-        public_id='smi:local/EventParameters',
-        event_list=[event])
+        public_id='smi:local/EventParameters', event_list=[event])
 
-    qml = QuakeML(event_parameters=event_parameters)
-
-    return qml
+    return QuakeML(event_parameters=event_parameters)
 
 
 def dump_nlloc_obs(event, filename, delimiter_str=None):
     """
-    Write a NonLinLoc phase file (NLLOC_OBS) from
+    Write a NonLinLoc phase file (NLLOC_OBS) from a
     :class:`~scoter.ie.quakeml.Event`object.
 
     Parameters
@@ -381,8 +468,8 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
 
         arvl = arvl_maps[pick.public_id]
 
-        if arvl.time_weight is None and arvl.time_used is None:
-            continue
+        # if arvl.time_weight is None and arvl.time_used is None:
+        #     continue
 
         if arvl.time_weight == 0.0 or arvl.time_used == 0:
             continue
@@ -396,8 +483,7 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
         comp = wid.channel_code and wid.channel_code[-1].upper() or '?'
         onset = ONSETS_DUMP.get(pick.onset, '?')
 
-        pha = (
-            getattr(pick.phase_hint, 'code', None) or arvl.phase.code or '?')
+        pha = arvl.phase.code or '?'
 
         pol = POLARITIES_DUMP.get(pick.polarity, '?')
         time_str = time_to_str(pick.time.value, format='%Y%m%d %H%M %S.4FRAC')
@@ -458,11 +544,7 @@ def load_nlloc_sta(filename, delimiter_str=None):
         lat, lon, depth, elev = map(float, items[3:])
 
         stations.append(Station(
-            network=net,
-            station=sta,
-            lat=lat,
-            lon=lon,
-            elevation=elev,
+            network=net, station=sta, lat=lat, lon=lon, elevation=elev,
             depth=depth))
 
     return stations
@@ -536,6 +618,7 @@ def dump_nlloc_sta(
 
 
 __all__ = """
+    load_nlloc_obs
     load_nlloc_hyp
     dump_nlloc_obs
     load_nlloc_sta

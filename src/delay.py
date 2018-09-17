@@ -83,7 +83,6 @@ def calc_static(config):
             pha_to_rescutoff = {
                 k: robust_mad(v)*wconfig.outlier_rejection_level for
                 k, v in pha_to_res.iteritems()}
-
         else:
             # Static outlier rejection
             std_plabels = set(sconfig.phase_map.values())
@@ -104,7 +103,7 @@ def calc_static(config):
         # Residual outlier rejection
         if wconfig.apply_outlier_rejection:
             rescutoff = pha_to_rescutoff[plabel]
-            residuals = [x for x in residuals if (x/rescutoff)**2 <= 1]
+            residuals = [x for x in residuals if (x/rescutoff)**2 < 1]
 
         nresiduals = len(residuals)
 
@@ -117,7 +116,6 @@ def calc_static(config):
             # Needs to keep the old correction term
             tcor_new = 0. + tcor_old
             std_dev = -1.
-
         else:
             # Add one dummy zero residual, i.e. increase `nresiduals` by
             # one, to force the mean station term to zero
@@ -131,8 +129,8 @@ def calc_static(config):
             station_label=slabel,
             phase_label=plabel,
             nresiduals=nresiduals,
-            time_correction=tcor_new,
-            standard_deviation=std_dev)
+            time_correction=float(tcor_new),
+            standard_deviation=float(std_dev))
 
         new_delays.append(new_delay)
 
@@ -223,7 +221,6 @@ def calc_ssst(config, iiter):
             pha_to_rescutoff = {
                 k: robust_mad(v)*wconfig.outlier_rejection_level for
                 k, v in pha_to_res.iteritems()}
-
         else:
             # Static outlier rejection
             std_plabels = set(sconfig.phase_map.values())
@@ -249,6 +246,8 @@ def calc_ssst(config, iiter):
         nparallel=config.nparallel,
         show_progress=config.show_progress,
         label=None)
+
+    del g_state[id(g_data)]
 
     return filter(None, new_targets)
 
@@ -359,7 +358,7 @@ def _calc_single_ssst(itrg_event, g_data_id):
         # Residual outlier rejection
         if wconfig.apply_outlier_rejection:
             rescutoff = pha_to_rescutoff[trg_plabel]
-            b = np.where(np.true_divide(residuals, rescutoff)**2 <= 1)[0]
+            b = np.where(np.true_divide(residuals, rescutoff)**2 < 1)[0]
             residuals = residuals[b]
             weights = weights[b]
 
