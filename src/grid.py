@@ -12,7 +12,7 @@ g_fstem_templates = {
     'time': '%(basename)s.%(wave_type)s.%(slabel)s.%(grid_type)s',
     'vel': '%(basename)s.%(wave_type)s.mod'}
 
-g_float_types = {'FLOAT': 'f', 'DOUBLE': 'd'}
+g_float_types = {'FLOAT': 'f4', 'DOUBLE': 'f8'}
 
 sys_is_le = sys.byteorder == 'little'
 
@@ -169,7 +169,7 @@ class NLLGrid(Object):
             label=self.station.name,
             x_s=self.station.lon,
             y_s=self.station.lat,
-            z_s=self.station.elevation*(-0.001)))   # z must be in [km]
+            z_s=self.station.elevation*(-0.001)+0.0))   # z must be in [km]
 
         fstem = self.__get_fn_template()
         fname = fstem + '.hdr'
