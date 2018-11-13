@@ -233,7 +233,7 @@ def calc_ssst(config, iiter):
         pha_to_rescutoff, lowqualities)
 
     g_state[id(g_data)] = g_data
-    ntargets = len(config.targets)
+    ntargets = len(event_list)
     task_list = zip(xrange(ntargets), [id(g_data)]*ntargets)
 
     logger.info(
@@ -357,7 +357,7 @@ def _calc_single_ssst(itrg_event, g_data_id):
 
         # Residual outlier rejection
         if wconfig.apply_outlier_rejection:
-            rescutoff = pha_to_rescutoff[trg_plabel]
+            rescutoff = pha_to_rescutoff.get(trg_plabel, 1.0)
             b = np.where(np.true_divide(residuals, rescutoff)**2 < 1)[0]
             residuals = residuals[b]
             weights = weights[b]

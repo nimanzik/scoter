@@ -452,12 +452,17 @@ def export_events(rundir, step, i_iter=-1, fmt='columns', filename=None):
 
     step = step.upper()
     data = _load_cached_data(rundir, step)
-    i_iter = i_iter <= 0 and len(data) or i_iter
 
-    try:
-        event_to_hypo = data[i_iter]
-    except KeyError:
-        raise ScoterError('invalid iteration number for step {}'.format(step))
+    if len(data) == 1:
+        event_to_hypo = data.values()[0]
+    else:
+        i_iter = i_iter <= 0 and len(data) or i_iter
+
+        try:
+            event_to_hypo = data[i_iter]
+        except KeyError:
+            raise ScoterError(
+                'invalid iteration number for step {}'.format(step))
 
     event_to_hypo = OrderedDict(
         sorted(event_to_hypo.items(), key=lambda t: t[0]))

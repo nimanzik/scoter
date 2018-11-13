@@ -130,7 +130,9 @@ def _nlloc_worker(itarget, config_id):
         # Write station delays.
         if isinstance(target.station_delays, basestring):
             # Given station delays as a plain text file.
-            f.write('INCLUDE {}\n'.format(target.station_delays))
+            fn_delays = expand_template(
+                target.station_delays, dict(event_name=target.name))
+            f.write('INCLUDE {}\n'.format(fn_delays))
         elif isinstance(target.station_delays, list):
             for delay in target.station_delays:
                 f.write('{}\n'.format(delay))
