@@ -530,22 +530,22 @@ def load_nlloc_sta(filename, delimiter_str=None):
     """
 
     stations = []
-    lines = open(filename, 'r').read().splitlines()
-    lines = [x for x in lines if x.startswith('LOCSRCE')]
 
-    for line in lines:
-        items = line.split()
+    with open(filename, 'r') as fid:
+        for line in fid:
+            if line.startswith('LOCSRCE') or line.startswith('GTSRCE'):
+                items = line.split()
 
-        if delimiter_str:
-            net, sta = items[1].split(delimiter_str)
-        else:
-            net, sta = '', items[1]
+                if delimiter_str:
+                    net, sta = items[1].split(delimiter_str)
+                else:
+                    net, sta = '', items[1]
 
-        lat, lon, depth, elev = map(float, items[3:])
+                lat, lon, depth, elev = map(float, items[3:])
 
-        stations.append(Station(
-            network=net, station=sta, lat=lat, lon=lon, elevation=elev,
-            depth=depth))
+                stations.append(Station(
+                    network=net, station=sta, lat=lat, lon=lon,
+                    elevation=elev*KM2M, depth=depth*KM2M, name=items[1]))
 
     return stations
 
