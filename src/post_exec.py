@@ -19,7 +19,7 @@ from .geodetic import DEG2M, M2KM, KM2M
 from .ie.nlloc import load_nlloc_hyp
 from .meta import FileNotFound, PathAlreadyExists, ScoterError
 from .parmap import parstarmap
-from .stats import median_absolute_deviation, robust_mad
+from .stats import mad, smad
 from .util import data_file, dump_pickle, load_pickle
 
 
@@ -561,8 +561,8 @@ def plot_convergence(
                     res_list.append(res)
 
         if statistic.upper() == 'MAD':
-            return (i_iter, median_absolute_deviation(res_list))
-        return (i_iter, robust_mad(res_list))
+            return (i_iter, mad(res_list))
+        return (i_iter, smad(res_list))
 
     r = parimap(f, data.keys())
     x, y = zip(*r)

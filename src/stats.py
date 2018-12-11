@@ -1,9 +1,10 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
+import scipy as sp
 
 
-def median_absolute_deviation(a, axis=None):
+def mad(a, axis=None):
     """
     Calculate the median absolute deviation (MAD) of an array along
     given axis.
@@ -34,15 +35,56 @@ def median_absolute_deviation(a, axis=None):
     med = np.nanmedian(a, axis=axis, keepdims=True)
 
     # MAD along given axis
-    mad = np.nanmedian(np.absolute(a - med), axis=axis)
-
-    return mad
+    return np.nanmedian(np.absolute(a - med), axis=axis)
 
 
-def robust_mad(a, axis=None):
+def smad(a, axis=None):
     """
     Calculate a robust standard deviation using the median absolute
     deviation (MAD) of an array along given axis.
+
+    It is also called scaled median absolute deviation (SMAD).
+
+    The standard deviation estimator is given by:
+
+    .. math::
+
+        \sigma \approx \frac{\textrm{MAD}}{\Phi^{-1}(3/4)}
+
+    where :math:`\Phi^{-1}(P)` is the constant scale factor, which
+    depends on the distribution and evaluated at probability
+    :math:`P = 3/4`.
+
+    Parameters
+    ----------
+    a : array-like
+        Input array or object that can be converted to an array.
+    axis : {int, sequence of int, None}, optional
+        Axis along which the robust standard deviations are computed.
+        The default (`None`) is to compute the robust standard deviation
+        of the flattened array.
+
+    Returns
+    -------
+    smad : float or :class:`numpy.ndarray`
+        The robust standard deviation of the input data.  If `axis` is
+        `None` then a scalar will be returned, otherwise a
+        :class:`numpy.ndarray` will be returned.
+
+    References
+    ----------
+    .. [1] http://en.wikipedia.org/wiki/Median_absolute_deviation
+    """
+
+    loc, scale = sp.stats.norm.fit(a)
+    kappa = 1. / np.percentile((a-loc)/scale, 75)
+    return kappa * mad(a, axis=axis)
+
+
+def smad_normal(a, axis=None):
+    """
+    Calculate a robust standard deviation using the median absolute
+    deviation (MAD) of a normally distributed data along given axis.
 
     It is also called scaled median absolute deviation (SMAD).
 
@@ -67,7 +109,7 @@ def robust_mad(a, axis=None):
 
     Returns
     -------
-    robust_mad : float or :class:`numpy.ndarray`
+    smad : float or :class:`numpy.ndarray`
         The robust standard deviation of the input data.  If `axis` is
         `None` then a scalar will be returned, otherwise a
         :class:`numpy.ndarray` will be returned.
@@ -78,8 +120,8 @@ def robust_mad(a, axis=None):
     """
 
     # 1.0 / scipy.stats.norm.ppf(3./4.) = 1.482602218505602
-    mad = median_absolute_deviation(a, axis=axis)
-    return mad * 1.482602218505602
+    kappa = 1.482602218505602
+    return kappa * mad(a, axis=axis)
 
 
 def biweight(data, cutoff, a, b):
@@ -128,8 +170,8 @@ def bicubic(data, cutoff):
 
 
 __all__ = """
-    median_absolute_deviation
-    robust_mad
+    mad
+    smad
     biweight
     bisquared
     bicubic

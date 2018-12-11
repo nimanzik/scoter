@@ -9,16 +9,16 @@ from scoter import stats
 
 class StatsTestCase(unittest.TestCase):
 
-    def test_median_absolute_deviation(self):
+    def test_mad(self):
         data = [
             (3, 8, 8, 8, 8, 9, 9, 9, 9),
             (1, 1, 2, 2, 2, 4, 4, 6, 9)]
 
         for d in data:
-            self.assertEqual(stats.median_absolute_deviation(d), 1)
+            self.assertEqual(stats.mad(d), 1)
 
         np.testing.assert_equal(
-            stats.median_absolute_deviation(np.array(data), axis=1), [1., 1.])
+            stats.mad(np.array(data), axis=1), [1., 1.])
 
     def test_bisquared(self):
         data = np.array([0., 0.5, 1., 2., 4., 11])

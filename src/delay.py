@@ -9,7 +9,7 @@ from .log_util import custom_logger
 from .meta import Delay, Target
 from .parmap import parstarmap
 from .spatial import *   # noqa
-from .stats import robust_mad
+from .stats import smad
 from .util import progressbar
 
 
@@ -81,7 +81,7 @@ def calc_static(config):
                 pha_to_res[pha].extend(reslist)
 
             pha_to_rescutoff = {
-                k: robust_mad(v)*wconfig.outlier_rejection_level for
+                k: smad(v)*wconfig.outlier_rejection_level for
                 k, v in pha_to_res.iteritems()}
         else:
             # Static outlier rejection
@@ -219,7 +219,7 @@ def calc_ssst(config, iiter):
         if wconfig.outlier_rejection_type == 'dynamic':
             # Dynamic outlier rejection
             pha_to_rescutoff = {
-                k: robust_mad(v)*wconfig.outlier_rejection_level for
+                k: smad(v)*wconfig.outlier_rejection_level for
                 k, v in pha_to_res.iteritems()}
         else:
             # Static outlier rejection
