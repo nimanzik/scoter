@@ -226,6 +226,8 @@ def calc_ssst(config, iiter):
             std_plabels = set(sconfig.phase_map.values())
             pha_to_rescutoff = dict.fromkeys(
                 std_plabels, wconfig.outlier_rejection_level)
+    else:
+        pha_to_rescutoff = dict()
 
     # --- Calculate the SSST values ---
     g_data = (
@@ -342,7 +344,7 @@ def _calc_single_ssst(itrg_event, g_data_id):
                 ngh_weight = get_w_ed(ngh_weight, alpha)
 
             residuals.extend(ngh_res)
-            weights.append(ngh_weight)
+            weights.extend([ngh_weight] * len(ngh_res))
             r_counter += 1
 
             if r_counter == nresiduals_max:

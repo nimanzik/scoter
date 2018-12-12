@@ -871,7 +871,8 @@ class ScoterRunner(object):
 
             # --- Step 2: set new locdir and new station terms. ---
             self.config.locdir = pjoin(
-                static_dir, '{iiter:0{strlen:d}d}_2_loc'.format(iiter+1))
+                static_dir, '{iiter:0{strlen:d}d}_2_loc'.format(
+                    iiter=iiter+1, strlen=strlen))
 
             for target in self.config.targets:
                 trg_new_delays = [
@@ -922,7 +923,8 @@ class ScoterRunner(object):
 
             # --- Step 2: set new locdir and new targets. ---
             self.config.locdir = pjoin(
-                ssst_dir, '{iiter:0{strlen:d}d}_2_loc'.format(iiter+1))
+                ssst_dir, '{iiter:0{strlen:d}d}_2_loc'.format(
+                    iiter=iiter+1, strlen=strlen))
             self.config.targets = new_targets
 
             # --- Step 3: locate events with new station delays. ---
