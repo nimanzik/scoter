@@ -7,7 +7,7 @@ from os.path import join as pjoin
 import shutil
 import sys
 
-from matplotlib import pyplot as plt, gridspec
+from matplotlib import pyplot as plt, gridspec, ticker
 import numpy as np
 
 from pyrocko import guts, model
@@ -19,7 +19,7 @@ from .geodetic import DEG2M, M2KM, KM2M
 from .ie.nlloc import load_nlloc_hyp
 from .meta import FileNotFound, PathAlreadyExists, ScoterError
 from .parmap import parstarmap
-from .stats import mad, smad
+from .stats import mad, smad_normal
 from .util import data_file, dump_pickle, load_pickle
 
 
@@ -562,7 +562,7 @@ def plot_convergence(
 
         if statistic.upper() == 'MAD':
             return (i_iter, mad(res_list))
-        return (i_iter, smad(res_list))
+        return (i_iter, smad_normal(res_list))
 
     r = parimap(f, data.keys())
     x, y = zip(*r)
@@ -572,7 +572,8 @@ def plot_convergence(
     ax.plot(x, y, '-o',)
     ax.set_xlabel('Iteration Number')
     ax.set_ylabel('Travel-Time Residual {} [s]'.format(statistic))
-    ax.set_xticks(np.arange(x[0], x[-1]+1, len(x)//10))
+    # Set xtick labels to integers
+    ax.xaxis.set_major_locator(ticker.MaxNLocator(integer=True))
     if save:
         for fmt in fmts:
             fname = 'convergence_curve_{}.{}'.format(NAMED_STEPS[step], fmt)
