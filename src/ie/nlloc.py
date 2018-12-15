@@ -132,7 +132,8 @@ def load_nlloc_obs(filename, event_name=None, delimiter_str=None):
 
 
 def load_nlloc_hyp(
-        filename, event_name=None, delimiter_str=None, add_arrival_maps=False):
+        filename, event_name=None, delimiter_str=None, add_arrival_maps=False,
+        add_covariance_matrix=False):
     """
     Read NonLinLoc hypocenter-phase file (ASCII, FileExtension=*.hyp)
     to a :class:`~scoter.ie.quakeml.QuakeML` object.
@@ -241,9 +242,8 @@ def load_nlloc_hyp(
     # STATISTICS line
     line = hyp_lines['STATISTICS']
     items = line.split(None)
-    cov_xx = float(items[7])
-    cov_yy = float(items[13])
-    cov_zz = float(items[17])
+    expect_x, expect_y, expect_z, cov_xx, cov_xy, cov_xz, cov_yy, cov_yz, \
+        cov_zz = map(float, items[1:18:2])
     major_len = float(items[-1])
     inter_len = float(items[-3])
     minor_len = float(items[-9])
@@ -413,6 +413,16 @@ def load_nlloc_hyp(
 
     if add_arrival_maps:
         event.arrival_maps = arrival_maps
+
+    if add_covariance_matrix:
+        idx_triu = np.triu_indices(3, k=1)
+        idx_diag = np.diag_indices(3, ndim=2)
+        cov_mat = np.zeros((3, 3), dtype=np.float32)
+        cov_mat[idx_triu] = (cov_xy, cov_xz, cov_yz)
+        cov_mat += cov_mat.T
+        cov_mat[idx_diag] = (cov_xx, cov_yy, cov_zz)
+        event.covariance_matrix = cov_mat
+        event.expectation_xyz = np.array([expect_x, expect_y, expect_z])
 
     event_parameters = EventParameters(
         public_id='smi:local/EventParameters', event_list=[event])
