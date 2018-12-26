@@ -36,9 +36,13 @@ guts_prefix = 'gp'
 
 WSPACE = ''.ljust(1)
 HYP_FILE_EXTENSION = '.loc.hyp'
+DELIMITER_STR = '.'
 
 # Named location steps
-NAMED_STEPS = {'A': 'A_single', 'B': 'B_static', 'C': 'C_ssst'}
+NAMED_STEPS = {
+    'A': 'Step_A_single',
+    'B': 'Step_B_static',
+    'C': 'Step_C_ssst'}
 
 # Set logger
 logger = custom_logger(__name__)
@@ -49,72 +53,97 @@ logger = custom_logger(__name__)
 class DatasetConfig(HasPaths):
     events_path = Path.T()
     bulletins_template_path = Path.T()
-    stations_path = Path.T()
-    delimiter_str = String.T(optional=True)
+    stations_paths = List.T(Path.T())
     traveltimes_path = Path.T()
     takeoffangles_template_path = Path.T(optional=True)
     starting_delays_path = Path.T(optional=True)
 
     def __init__(
-            self, events_path, bulletins_template_path, stations_path,
-            traveltimes_path, delimiter_str=None,
-            takeoffangles_template_path=None, starting_delays_path=None):
+            self, events_path, bulletins_template_path, stations_paths,
+            traveltimes_path, takeoffangles_template_path=None,
+            starting_delays_path=None):
 
         HasPaths.__init__(
             self,
             events_path=events_path,
             bulletins_template_path=bulletins_template_path,
-            stations_path=stations_path,
-            delimiter_str=delimiter_str or '',
+            stations_paths=stations_paths,
             traveltimes_path=traveltimes_path,
             takeoffangles_template_path=takeoffangles_template_path,
             starting_delays_path=starting_delays_path)
 
-    def get_pyrocko_events(self):
-        """Extracts a list of :class:`pyrocko.model.Event` objects."""
+    @staticmethod
+    def check_path_exists(path):
+        if not op.exists(path):
+            return "No such file or directory: '{}'".format(path)
+        return
 
-        if not op.exists(self.events_path):
-            raise FileNotFound("No such file or directory: '{}'".format(
-                self.events_path))
+    def get_pyrocko_events(self):
+        """
+        Extracts a list of :class:`pyrocko.model.Event` objects.
+
+        Raises
+        ------
+        FileNotFound
+            If events file does not exist.
+        """
+
+        err_msg = self.check_path_exists(self.events_path)
+        if err_msg:
+            raise FileNotFound(err_msg)
 
         logger.debug("Loading events from file '{}'".format(self.events_path))
         return model.load_events(self.events_path)
 
     def get_stations(self):
-        """Returns a list of :class:`meta.Station` objects."""
+        """
+        Returns a list of :class:`meta.Station` objects.
 
-        if not op.exists(self.stations_path):
-            raise FileNotFound("No such file or directory '{}'".format(
-                self.stations_path))
+        Raises
+        ------
+        FileNotFound
+            If one or more station files do not exist.
+        ScoterError
+            If one or more station files are corrupt.
+        """
 
-        logger.debug(
-            'Loading stations from file "{}"'.format(self.stations_path))
+        err_msgs = []
+        for sta_path in self.stations_paths:
+            err_msgs.append(self.check_path_exists(sta_path))
 
-        f = open(self.stations_path, 'r')
-        lines = f.read().splitlines()
-        lines = filter(None, lines)
-        f.close()
+        if filter(None, err_msgs):
+            raise FileNotFound("{}".format(', '.join(err_msgs)))
 
         stations = []
-        for line in lines:
-            items = line.split()
-            try:
-                net = items[-5].strip()
-            except IndexError:
-                net = ''.strip()
-            sta = items[-4].strip()
-            slabel = self.delimiter_str.join(items[-5:-3])
+        for path in self.stations_paths:
+            logger.debug(
+                "Loading stations from file '{}'".format(path))
 
-            lat, lon, elev = map(float, items[-3:])
-            x, y, z = geodetic_to_ecef(lat, lon, 0.)
+            f = open(path, 'r')
+            lines = f.read().splitlines()
+            lines = filter(None, lines)
+            f.close()
 
-            stations.append(Station(
-                network=net, station=sta, lat=lat, lon=lon, depth=0.,
-                elevation=elev, x=x, y=y, z=z, name=slabel))
+            for line in lines:
+                items = line.split()
+                try:
+                    net = items[-5].strip()
+                except IndexError:
+                    net = ''.strip()
+                sta = items[-4].strip()
+
+                slabel = DELIMITER_STR.join(items[-5:-3])
+
+                lat, lon, elev = map(float, items[-3:])
+                x, y, z = geodetic_to_ecef(lat, lon, 0.)
+
+                stations.append(Station(
+                    network=net, station=sta, lat=lat, lon=lon, depth=0.,
+                    elevation=elev, x=x, y=y, z=z, name=slabel))
 
         if len(stations) == 0:
             raise ScoterError(
-                'no station information found in "{}"'.format(
+                "No station information found in '{}'".format(
                     self.stations_path))
 
         return stations
@@ -123,16 +152,12 @@ class DatasetConfig(HasPaths):
         """
         Returns a dictionary whose keys are `phase_labels` and values
         are :class:`pyrocko.spit.SPTree` objects.
+
+        Raises
+        ------
+        FileNotFound
+            If one or more given takeoff-angle files do not exist.
         """
-
-        def check(fns):
-            errmess = []
-            for fn in fns.values():
-                if not op.exists(fn):
-                    errmess.append(
-                        "No such file or directory: '{}'").format(fn)
-
-            return errmess
 
         fns = {}
         for plabel in phase_labels:
@@ -142,14 +167,17 @@ class DatasetConfig(HasPaths):
 
             fns[plabel] = fn
 
-        errmess = check(fns)
-        if errmess:
-            raise FileNotFound("{}".format('\n'.join(errmess)))
+        err_msgs = []
+        for fn in fns.values():
+            err_msgs.append(self.check_path_exists(fn))
+
+        if filter(None, err_msgs):
+            raise FileNotFound("{}".format(', '.join(err_msgs)))
 
         trees = {}
         for plabel, fn in fns.iteritems():
             logger.debug(
-                'Loading {0}-wave takeoff angles from file "{1}"'.format(
+                "Loading {0}-wave takeoff angles from file '{1}'".format(
                     plabel, fn))
 
             tree = spit.SPTree(filename=fn)
@@ -305,6 +333,13 @@ class NetworkConfig(Object):
 # ----- NLLoc configuration (control file statements). -----
 
 class NLLocTrans(Object):
+    """
+    Raises
+    ------
+    ScoterError
+        If one or more arguments are missing to a specific transformation.
+    """
+
     trans_type = StringChoice.T(choices=[
         'GLOBAL', 'SIMPLE', 'NONE', 'SDC', 'LAMBERT'])
     lat_orig = Float.T(optional=True)
@@ -543,7 +578,14 @@ def _get_single_target(event, config):
 
     Returns
     -------
-    result : :class:`scoter.meta.Target` object
+    result : :class:`scoter.meta.Target` object or None
+        Target event if its file and station information exist.
+        Otherwise returns None.
+
+    Raises
+    ------
+    ScoterError
+        If given bulletin file is corrupt.
     """
 
     filename = expand_template(
