@@ -88,12 +88,14 @@ class DatasetConfig(HasPaths):
             If events file does not exist.
         """
 
-        err_msg = self.check_path_exists(self.events_path)
+        events_path = self.expand_path(self.events_path, extra=None)
+
+        err_msg = self.check_path_exists(events_path)
         if err_msg:
             raise FileNotFound(err_msg)
 
-        logger.debug("Loading events from file '{}'".format(self.events_path))
-        return model.load_events(self.events_path)
+        logger.debug("Loading events from file '{}'".format(events_path))
+        return model.load_events(events_path)
 
     def get_stations(self):
         """
@@ -108,18 +110,20 @@ class DatasetConfig(HasPaths):
         """
 
         err_msgs = []
-        for sta_path in self.stations_paths:
+        for p in self.stations_paths:
+            sta_path = self.expand_path(p, extra=None)
             err_msgs.append(self.check_path_exists(sta_path))
 
         if filter(None, err_msgs):
             raise FileNotFound("{}".format(', '.join(err_msgs)))
 
         stations = []
-        for path in self.stations_paths:
+        for p in self.stations_paths:
+            sta_path = self.expand_template(p, extra=None)
             logger.debug(
-                "Loading stations from file '{}'".format(path))
+                "Loading stations from file '{}'".format(sta_path))
 
-            f = open(path, 'r')
+            f = open(sta_path, 'r')
             lines = f.read().splitlines()
             lines = filter(None, lines)
             f.close()
