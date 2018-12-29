@@ -480,7 +480,7 @@ class NLLocStawt(Object):
     def __init__(self, activation_flag, cutoff_dist=None):
         Object.__init__(
             self,
-            activation_flag=int(self.activation_flag > 0),
+            activation_flag=int(activation_flag > 0),
             cutoff_dist=cutoff_dist or -1.0)
 
     def __str__(self):
