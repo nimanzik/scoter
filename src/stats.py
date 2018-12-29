@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import scipy as sp
+from scipy.stats import norm
 
 
 def mad(a, axis=None):
@@ -76,7 +76,7 @@ def smad(a, axis=None):
     .. [1] http://en.wikipedia.org/wiki/Median_absolute_deviation
     """
 
-    loc, scale = sp.stats.norm.fit(a)
+    loc, scale = norm.fit(a)
     kappa = 1. / np.percentile((a-loc)/scale, 75)
     return kappa * mad(a, axis=axis)
 
