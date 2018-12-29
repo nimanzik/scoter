@@ -38,99 +38,6 @@ class NLLocError(Exception):
     pass
 
 
-def load_nlloc_obs(filename, event_name=None, delimiter_str=None):
-    """
-    Read NonLinLoc phase file (ASCII, NLLoc obsFileType = NLLOC_OBS)
-    to a :class:`~scoter.ie.quakeml.QuakeML` object.
-
-    Parameters
-    ----------
-    filename : str
-        NonLinLoc hypocenter-phase file name.
-
-    event_name : str
-        Event public ID.
-
-    delimiter_str : str or None (default: None)
-        If not `None`, it specifies a string to be used as the network
-        code and station code separator character, i.e. it is used to
-        split the station label in NonLinLoc hypocenter-phase file. If
-        it is absent or `None` (default), the entire station label read
-        is considered as the `station code` and an empty string is
-        assigned to the `network code` for each pick.
-    """
-
-    # Read file contents and remove empty lines
-    flines = open(filename, 'r').read().splitlines()
-    flines = filter(None, flines)
-
-    idx_pha_block = [None, None]
-    for i, line in enumerate(flines):
-        if line.startswith('PHASE '):
-            idx_pha_block[0] = i
-        elif line.startswith('END_PHASE'):
-            idx_pha_block[1] = i
-
-    if len(filter(None, idx_pha_block)) == 2:
-        i1, i2 = idx_pha_block
-        pha_lines = flines[i1:i2:1]
-    else:
-        pattern = re.compile(r'\sGAU\s|\sBOX\s|\sFIX\s|\sNONE\s', re.I)
-        pha_lines = [x for x in flines if pattern.findall(x)]
-
-    if len(pha_lines) == 0:
-        raise NLLocError("Bulletin file seems corrupt: '{}'".format(filename))
-
-    pick_list = []
-    for i, line in enumerate(pha_lines):
-        items = line.split()
-
-        slabel = items[0].strip()
-        try:
-            net, sta = slabel.split(delimiter_str)
-        except ValueError:
-            net, sta = '', slabel
-
-        cha = items[2].strip()
-        onset = ONSETS_LOAD.get(items[3].lower(), None)
-        plabel = items[4].strip()
-
-        tpick_str = WSPACE.join(items[6:9])
-        try:
-            tpick = str_to_time(tpick_str, format='%Y%m%d %H%M %S.OPTFRAC')
-        except TimeStrError:
-            mn = items[7][2:]
-            hrmn = '00' + mn
-            tpick_str = WSPACE.join((items[6], hrmn, items[8]))
-            tpick = str_to_time(tpick_str, format='%Y%m%d %H%M %S.OPTFRAC')
-            tpick += 24 * 3600   # add one day
-
-        # --- Create QuakeML attributes ---
-
-        waveform_id = WaveformStreamID(
-            network_code=net, station_code=sta, channel_code=cha,
-            resource_uri='')
-
-        phase = Phase(code=plabel)
-        tpick = TimeQuantity(value=tpick)
-
-        dummy_id = 'smi:local/{}'.format(i)
-
-        # Pick attribute
-        pick_list.append(Pick(
-            public_id=dummy_id, time=tpick, onset=onset, phase_hint=phase,
-            waveform_id=waveform_id))
-
-    # ------- Create quakeml.Event object -------
-
-    public_id = 'smi:local/{}'.format(event_name or 'NotSet')
-    event = Event(public_id=public_id, origin_list=[], pick_list=pick_list)
-    event_parameters = EventParameters(
-        public_id='smi:local/EventParameters', event_list=[event])
-
-    return QuakeML(event_parameters=event_parameters)
-
-
 def load_nlloc_hyp(
         filename, event_name=None, delimiter_str=None, add_arrival_maps=False,
         add_covariance_matrix=False):
@@ -430,6 +337,99 @@ def load_nlloc_hyp(
     return QuakeML(event_parameters=event_parameters)
 
 
+def load_nlloc_obs(filename, event_name=None, delimiter_str=None):
+    """
+    Read NonLinLoc phase file (ASCII, NLLoc obsFileType = NLLOC_OBS)
+    to a :class:`~scoter.ie.quakeml.QuakeML` object.
+
+    Parameters
+    ----------
+    filename : str
+        NonLinLoc hypocenter-phase file name.
+
+    event_name : str
+        Event public ID.
+
+    delimiter_str : str or None (default: None)
+        If not `None`, it specifies a string to be used as the network
+        code and station code separator character, i.e. it is used to
+        split the station label in NonLinLoc hypocenter-phase file. If
+        it is absent or `None` (default), the entire station label read
+        is considered as the `station code` and an empty string is
+        assigned to the `network code` for each pick.
+    """
+
+    # Read file contents and remove empty lines
+    flines = open(filename, 'r').read().splitlines()
+    flines = filter(None, flines)
+
+    idx_pha_block = [None, None]
+    for i, line in enumerate(flines):
+        if line.startswith('PHASE '):
+            idx_pha_block[0] = i
+        elif line.startswith('END_PHASE'):
+            idx_pha_block[1] = i
+
+    if len(filter(None, idx_pha_block)) == 2:
+        i1, i2 = idx_pha_block
+        pha_lines = flines[i1:i2:1]
+    else:
+        pattern = re.compile(r'\sGAU\s|\sBOX\s|\sFIX\s|\sNONE\s', re.I)
+        pha_lines = [x for x in flines if pattern.findall(x)]
+
+    if len(pha_lines) == 0:
+        raise NLLocError("Bulletin file seems corrupt: '{}'".format(filename))
+
+    pick_list = []
+    for i, line in enumerate(pha_lines):
+        items = line.split()
+
+        slabel = items[0].strip()
+        try:
+            net, sta = slabel.split(delimiter_str)
+        except ValueError:
+            net, sta = '', slabel
+
+        cha = items[2].strip()
+        onset = ONSETS_LOAD.get(items[3].lower(), None)
+        plabel = items[4].strip()
+
+        tpick_str = WSPACE.join(items[6:9])
+        try:
+            tpick = str_to_time(tpick_str, format='%Y%m%d %H%M %S.OPTFRAC')
+        except TimeStrError:
+            mn = items[7][2:]
+            hrmn = '00' + mn
+            tpick_str = WSPACE.join((items[6], hrmn, items[8]))
+            tpick = str_to_time(tpick_str, format='%Y%m%d %H%M %S.OPTFRAC')
+            tpick += 24 * 3600   # add one day
+
+        # --- Create QuakeML attributes ---
+
+        waveform_id = WaveformStreamID(
+            network_code=net, station_code=sta, channel_code=cha,
+            resource_uri='')
+
+        phase = Phase(code=plabel)
+        tpick = TimeQuantity(value=tpick)
+
+        dummy_id = 'smi:local/{}'.format(i)
+
+        # Pick attribute
+        pick_list.append(Pick(
+            public_id=dummy_id, time=tpick, onset=onset, phase_hint=phase,
+            waveform_id=waveform_id))
+
+    # ------- Create quakeml.Event object -------
+
+    public_id = 'smi:local/{}'.format(event_name or 'NotSet')
+    event = Event(public_id=public_id, origin_list=[], pick_list=pick_list)
+    event_parameters = EventParameters(
+        public_id='smi:local/EventParameters', event_list=[event])
+
+    return QuakeML(event_parameters=event_parameters)
+
+
 def dump_nlloc_obs(event, filename, delimiter_str=None):
     """
     Write a NonLinLoc phase file (NLLOC_OBS) from a
@@ -628,8 +628,8 @@ def dump_nlloc_sta(
 
 
 __all__ = """
-    load_nlloc_obs
     load_nlloc_hyp
+    load_nlloc_obs
     dump_nlloc_obs
     load_nlloc_sta
     dump_nlloc_sta

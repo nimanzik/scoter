@@ -53,13 +53,13 @@ logger = custom_logger(__name__)
 class DatasetConfig(HasPaths):
     events_path = Path.T()
     bulletins_template_path = Path.T()
-    stations_paths = List.T(Path.T())
+    station_path_list = List.T(Path.T())
     traveltimes_path = Path.T()
     takeoffangles_template_path = Path.T(optional=True)
     starting_delays_path = Path.T(optional=True)
 
     def __init__(
-            self, events_path, bulletins_template_path, stations_paths,
+            self, events_path, bulletins_template_path, station_path_list,
             traveltimes_path, takeoffangles_template_path=None,
             starting_delays_path=None):
 
@@ -67,7 +67,7 @@ class DatasetConfig(HasPaths):
             self,
             events_path=events_path,
             bulletins_template_path=bulletins_template_path,
-            stations_paths=stations_paths,
+            station_path_list=station_path_list,
             traveltimes_path=traveltimes_path,
             takeoffangles_template_path=takeoffangles_template_path,
             starting_delays_path=starting_delays_path)
@@ -110,7 +110,7 @@ class DatasetConfig(HasPaths):
         """
 
         err_msgs = []
-        for p in self.stations_paths:
+        for p in self.station_path_list:
             sta_path = self.expand_path(p, extra=None)
             err_msgs.append(self.check_path_exists(sta_path))
 
@@ -118,8 +118,8 @@ class DatasetConfig(HasPaths):
             raise FileNotFound("{}".format(', '.join(err_msgs)))
 
         stations = []
-        for p in self.stations_paths:
-            sta_path = self.expand_template(p, extra=None)
+        for p in self.station_path_list:
+            sta_path = self.expand_path(p, extra=None)
             logger.debug(
                 "Loading stations from file '{}'".format(sta_path))
 
@@ -147,8 +147,7 @@ class DatasetConfig(HasPaths):
 
         if len(stations) == 0:
             raise ScoterError(
-                "No station information found in '{}'".format(
-                    self.stations_path))
+                "No station information found in given station file(s).")
 
         return stations
 
@@ -166,7 +165,7 @@ class DatasetConfig(HasPaths):
         fns = {}
         for plabel in phase_labels:
             fn = expand_template(
-                self.takeoffangles_template_path,
+                self.expand_path(self.takeoffangles_template_path, extra=None),
                 dict(phase_label=plabel))
 
             fns[plabel] = fn
@@ -519,7 +518,7 @@ class NLLocStawt(Object):
     def __init__(self, activation_flag, cutoff_dist=None):
         Object.__init__(
             self,
-            activation_flag=int(self.activation_flag > 0),
+            activation_flag=int(activation_flag > 0),
             cutoff_dist=cutoff_dist or -1.0)
 
     def __str__(self):
@@ -592,9 +591,13 @@ def _get_single_target(event, config):
         If given bulletin file is corrupt.
     """
 
-    filename = expand_template(
-        config.dataset_config.bulletins_template_path,
-        dict(event_name=event.name))
+    def extra(path):
+        return expand_template(path, dict(event_name=event.name))
+
+    def fp(path):
+        return config.expand_path(path, extra=extra)
+
+    filename = fp(config.dataset_config.bulletins_template_path)
 
     if not op.exists(filename):
         return
@@ -651,7 +654,7 @@ def _get_single_target(event, config):
     return Target(
         name=event.name,
         station_labels=slabels,
-        station_delays=config.dataset_config.starting_delays_path)
+        station_delays=fp(config.dataset_config.starting_delays_path))
 
 
 class Config(HasPaths):
@@ -674,7 +677,6 @@ class Config(HasPaths):
         self._show_progress = None
         self.update_phase_maps()
         self.update_phase_maps_rev()
-        self.update_swapbytes_flag()
 
     @property
     def stations(self):
@@ -724,7 +726,8 @@ class Config(HasPaths):
     @locations_path.getter
     def locations_path(self):
         if self._locations_path is None:
-            self.locations_path = self.dataset_config.bulletins_template_path
+            self.locations_path = self.expand_path(
+                self.dataset_config.bulletins_template_path)
         return self._locations_path
 
     @property
@@ -743,8 +746,8 @@ class Config(HasPaths):
     @locdir.getter
     def locdir(self):
         if self._locdir is None:
-            self.locdir = op.dirname(
-                self.dataset_config.bulletins_template_path)
+            self.locdir = op.dirname(self.expand_path(
+                self.dataset_config.bulletins_template_path))
         return self._locdir
 
     @property
@@ -817,7 +820,8 @@ class Config(HasPaths):
             setattr(obj, 'phase_map_rev', d_rev)
 
     def update_swapbytes_flag(self):
-        fn_grd = glob(self.dataset_config.traveltimes_path+'*.buf')[0]
+        fn_grd = glob(self.expand_path(
+            self.dataset_config.traveltimes_path+'*.buf'))[0]
         # we want to read the binary file in little-endian order
         sys_is_le = sys.byteorder == 'little'
         grd = read_nll_grid(fn_grd, swapbytes=(not sys_is_le))
@@ -848,7 +852,7 @@ class Config(HasPaths):
 
         dummy_loader = partial(
             load_nlloc_hyp,
-            delimiter_str=self.dataset_config.delimiter_str,
+            delimiter_str=DELIMITER_STR,
             add_arrival_maps=True)
 
         logger.info('Getting located events')
@@ -872,8 +876,8 @@ class ScoterRunner(object):
         self.config = config
         self.config.nparallel = nparallel
         self.config.show_progress = show_progress
-        self.sub_dirs = dict((k, pjoin(self.config.rundir, NAMED_STEPS[k]))
-                             for k in 'ABC')
+        self.sub_dirs = dict(
+            (k, pjoin(self.config.rundir, NAMED_STEPS[k])) for k in 'ABC')
 
     def _run_single(self):
         logger.info('Started single-event location')
@@ -900,6 +904,8 @@ class ScoterRunner(object):
             new_delays = calc_static(self.config)
 
             if not new_delays:
+                logger.warn(
+                    "SCOTER skips this step since it found no station terms")
                 break
 
             # stream = ''
@@ -1042,7 +1048,7 @@ def go(config, steps, force=False, nparallel=1, show_progress=False):
     basepath = config.get_basepath()
     config.change_basepath(config.rundir)
     ensuredir(config.rundir)
-    guts.dump(config, filename=pjoin(config.rundir, 'used_config.yaml'))
+    guts.dump(config, filename=pjoin(config.rundir, 'config.yaml'))
     config.change_basepath(basepath)
 
     methods = {'A': '_run_single', 'B': '_run_static', 'C': '_run_ssst'}
@@ -1050,6 +1056,8 @@ def go(config, steps, force=False, nparallel=1, show_progress=False):
     for k in steps:
         func = getattr(scoter, methods[k])
         func()
+
+    logger.info('.....FINISHED.....')
 
 
 __all__ = """

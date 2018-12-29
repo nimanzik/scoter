@@ -23,6 +23,9 @@ from .stats import mad, smad_normal
 from .util import data_file, dump_pickle, load_pickle
 
 
+DELIMITER_STR = '.'
+
+
 np.set_printoptions(nanstr='NaN')
 plt.style.use(['ggplot', data_file('scoter.mplstyle')])
 
@@ -64,7 +67,7 @@ def _load_cached_data(rundir, step):
     return load_pickle(infile)
 
 
-# ----------------------------------------------------------------------
+# =============================================================================
 
 
 def harvest(
@@ -85,8 +88,8 @@ def harvest(
 
     ensuredir(dumpdir)
 
-    pyrocko_events = model.load_events(op.normpath(pjoin(
-        rundir, config.path_prefix, config.dataset_config.events_path)))
+    pyrocko_events = model.load_events(
+        config.expand_path(config.dataset_config.events_path), extra=None)
 
     event_names = [ev.name for ev in pyrocko_events]
     basename_tmpl = '%(event_name)s%(ext)s'
@@ -146,7 +149,7 @@ def harvest(
                 task_list.append((
                     tuple(fns),
                     event_name,
-                    config.dataset_config.delimiter_str,
+                    DELIMITER_STR,
                     True))
         else:
             for event_name in event_names:
@@ -177,7 +180,7 @@ def harvest(
                 task_list.append((
                     tuple(fns),
                     event_name,
-                    config.dataset_config.delimiter_str,
+                    DELIMITER_STR,
                     True))
 
         # r = [((N1_A,E1_A), (N1_C,E1_C)), ((N2_A,E2_A), (N2_C,E2_C)), ...]
@@ -216,7 +219,7 @@ def harvest(
                 task_list.append((
                     tuple(fns),
                     event_name,
-                    config.dataset_config.delimiter_str,
+                    DELIMITER_STR,
                     True))
         else:
             for event_name in event_names:
@@ -244,7 +247,7 @@ def harvest(
                 task_list.append((
                     tuple(fns),
                     event_name,
-                    config.dataset_config.delimiter_str,
+                    DELIMITER_STR,
                     True))
 
         # r = [((N1_A,E1_A),(N1_C1,E1_C1),(N1_C2,E1_C2),...),

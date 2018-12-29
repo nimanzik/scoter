@@ -119,7 +119,7 @@ def calc_static(config):
         else:
             # Add one dummy zero residual, i.e. increase `nresiduals` by
             # one, to force the mean station term to zero
-            residuals.append(0.)
+            # residuals.append(0.)
 
             tcor_new = np.mean(residuals) + tcor_old
             std_dev = np.std(residuals)
@@ -379,8 +379,8 @@ def _calc_single_ssst(itrg_event, g_data_id):
         else:
             # Add one dummy zero residual (i.e. increase 'nresiduals'
             # by one) to force the mean station term to zero
-            residuals = np.append(residuals, 0.)
-            weights = np.append(weights, 1.0)
+            # residuals = np.append(residuals, 0.)
+            # weights = np.append(weights, 1.0)
 
             tcor_new = np.average(residuals, weights=weights) + tcor_old
             std_dev = np.std(residuals)

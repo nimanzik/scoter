@@ -17,6 +17,8 @@ from scoter.util import data_file
 
 progname = 'scoter'
 
+DELIMITER_STR = '.'
+
 # Create logger
 logger = custom_logger(name=progname)
 
@@ -185,7 +187,7 @@ def command_dump_obs(args):
             args.format,
             args.output_dir,
             args.events_path,
-            delimiter_str=args.delimiter_str,
+            delimiter_str=DELIMITER_STR,
             prefix=args.prefix,
             suffix=args.suffix,
             force=args.force,
@@ -218,12 +220,6 @@ named_dump_obs.add_argument(
     metavar='FILENAME', help='write pyrocko events to FILENAME.')
 
 # Optional args
-parser_dump_obs.add_argument(
-    '--delimiter-str', '--delimiter', dest='delimiter_str',
-    metavar='DELIMITER',
-    help='network code and station code separator character. Used to join '
-         'network and station codes when NLLOC_OBS files are written.')
-
 parser_dump_obs.add_argument(
     '--prefix', default="",
     help='if specified, all output filenames will begin with that prefix; '
@@ -582,7 +578,7 @@ parser_plot_res.add_argument(
 
 parser_plot_res.set_defaults(func=command_plot_residuals)
 
-# ----------------------------------------------------------------------
+# =============================================================================
 
 
 if __name__ == '__main__':

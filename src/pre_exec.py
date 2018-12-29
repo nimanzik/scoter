@@ -17,14 +17,15 @@ from .util import progressbar
 
 
 KM2M = 1000.
+DELIMITER_STR = '.'
 
 # Set logger
 logger = custom_logger(__name__)
 
 
 def dump_nlloc_obs_all(
-        bulletin_files, format, output_dir, events_path, delimiter_str=None,
-        prefix='', suffix='.nll', force=False, show_progress=False):
+        bulletin_files, format, output_dir, events_path, prefix='',
+        suffix='.nll', force=False, show_progress=False):
 
     if not force:
         warn_msgs = []
@@ -65,7 +66,7 @@ def dump_nlloc_obs_all(
                 output_dir, '{prefix}{event_name}{suffix}'.format(
                     prefix=prefix, event_name=qml_event.name, suffix=suffix))
 
-            dump_nlloc_obs(qml_event, out_filename, delimiter_str)
+            dump_nlloc_obs(qml_event, out_filename, DELIMITER_STR)
 
         if show_progress:
             pbar.update(ifn)

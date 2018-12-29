@@ -66,6 +66,9 @@ def nlloc_runner(config, keep_scat=False, raise_exception=False):
     ntargets = len(config.targets)
     task_list = zip(xrange(ntargets), [id(config)]*ntargets)
 
+    # Set the swap-bytes flag
+    config.update_swapbytes_flag()
+
     # Run the processes.
     ensuredir(config.locdir)
 
@@ -109,11 +112,16 @@ def _nlloc_worker(itarget, config_id):
 
     target = config.targets[itarget]
 
-    obsfile = expand_template(
-        config.dataset_config.bulletins_template_path,
-        dict(event_name=target.name))
+    def extra(path):
+        return expand_template(path, dict(event_name=target.name))
+
+    def fp(path):
+        return config.expand_path(path, extra=extra)
+
+    obsfile = fp(config.dataset_config.bulletins_template_path)
     outroot = op.join(config.locdir, target.name)
-    ttpath = config.dataset_config.traveltimes_path
+    ttpath = config.expand_path(
+        config.dataset_config.traveltimes_path, extra=None)
 
     fline = fline_template.substitute(
         obsfile=obsfile,
@@ -130,9 +138,7 @@ def _nlloc_worker(itarget, config_id):
         # Write station delays.
         if isinstance(target.station_delays, basestring):
             # Given station delays as a plain text file.
-            fn_delays = expand_template(
-                target.station_delays, dict(event_name=target.name))
-            f.write('INCLUDE {}\n'.format(fn_delays))
+            f.write('INCLUDE {}\n'.format(target.station_delays))
         elif isinstance(target.station_delays, list):
             for delay in target.station_delays:
                 f.write('{}\n'.format(delay))
@@ -170,15 +176,15 @@ def _nlloc_worker(itarget, config_id):
         logger.error(
             "======= BEGIN NLLoc ERROR =======\n{}"
             "======= END NLLoc ERROR =======".format(nlloc_err))
-    errmess = []
+    err_msgs = []
     if proc.returncode != 0:
-        errmess.append(
+        err_msgs.append(
             'NLLoc had a non-zero exit state: {}'.format(proc.returncode))
     if nlloc_err:
-        errmess.append('NLLoc emitted something via stderr')
+        err_msgs.append('NLLoc emitted something via stderr')
     if nlloc_err.lower().find('error') != -1:
-        errmess.append("The string 'error' appeared in NLLoc output")
-    if errmess and raise_exception:
+        err_msgs.append("The string 'error' appeared in NLLoc output")
+    if err_msgs and raise_exception:
         raise NLLocError(
             "===== BEGIN NLLoc OUTPUT =====\n{0}\n"
             "===== END NLLoc OUTPUT =====\n"
@@ -188,7 +194,7 @@ def _nlloc_worker(itarget, config_id):
             "NLLoc HAS BEEN INVOKED AS '{3}'".format(
                 nlloc_out,
                 nlloc_err,
-                '\n'.join(errmess),
+                '\n'.join(err_msgs),
                 program))
 
     if nlloc_out.lower().find('0 events located') != -1:

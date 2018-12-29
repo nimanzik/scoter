@@ -1,7 +1,7 @@
 # -*- coding: utf-8 -*-
 
 import numpy as np
-import scipy as sp
+from scipy.stats import norm
 
 
 def mad(a, axis=None):
@@ -28,7 +28,7 @@ def mad(a, axis=None):
         :class:`numpy.ndarray` will be returned.
     """
 
-    a = np.asanyarray(a)
+    a = np.asarray(a)
 
     # Median along given axis, but *keeping* the reduced axis so that
     # result can still broadcast against a.
@@ -76,7 +76,7 @@ def smad(a, axis=None):
     .. [1] http://en.wikipedia.org/wiki/Median_absolute_deviation
     """
 
-    loc, scale = sp.stats.norm.fit(a)
+    loc, scale = norm.fit(a)
     kappa = 1. / np.percentile((a-loc)/scale, 75)
     return kappa * mad(a, axis=axis)
 
@@ -167,6 +167,45 @@ def bicubic(data, cutoff):
     """
 
     return biweight(data, cutoff, a=3, b=3)
+
+
+def robust_average(a, epsilon=1.0, axis=None, weights=None, n_iter=10):
+    """
+    Huber's norm estimator.
+
+    Parameters
+    ----------
+    a : array-like
+        Input array or object that can be converted to an array.
+    epsilon : float (optional, default: 1.0)
+        Huber's threshold that controls the limit between L1 and L2 norm.
+    axis : {int, sequence of int, None}, optional
+        Axis along which the averages are computed. The default (`None`) is
+        to compute the average of the flattened array.
+    weights : array-like (optional)
+        An array of weights associated with the values in `a`.
+    n_iter : int (optional, default: 10)
+        Maximum number of iterations.
+
+    Returns
+    -------
+    robust_average : array-like or float
+    """
+    a = np.asarray(a)
+
+    if not np.any(a):
+        return np.nan
+
+    if not weights:
+        weights = np.ones_like(a)
+
+    for i_iter in range(n_iter-1):
+        # Take the average
+        avrg = np.average(a, axis=axis, weights=weights, returned=False)
+        # Update weights
+        weights = 1.0 / (epsilon+np.abs(a-avrg))
+
+    return np.average(a, axis=axis, weights=weights, returned=False)
 
 
 __all__ = """
