@@ -53,22 +53,24 @@ logger = custom_logger(__name__)
 class DatasetConfig(HasPaths):
     events_path = Path.T()
     bulletins_template_path = Path.T()
-    station_path_list = List.T(Path.T())
+    stations_paths = List.T(Path.T())
     traveltimes_path = Path.T()
+    traveltimes_prefix = String.T()
     takeoffangles_template_path = Path.T(optional=True)
     starting_delays_path = Path.T(optional=True)
 
     def __init__(
-            self, events_path, bulletins_template_path, station_path_list,
-            traveltimes_path, takeoffangles_template_path=None,
-            starting_delays_path=None):
+            self, events_path, bulletins_template_path, stations_paths,
+            traveltimes_path, traveltimes_prefix,
+            takeoffangles_template_path=None, starting_delays_path=None):
 
         HasPaths.__init__(
             self,
             events_path=events_path,
             bulletins_template_path=bulletins_template_path,
-            station_path_list=station_path_list,
+            stations_paths=stations_paths,
             traveltimes_path=traveltimes_path,
+            traveltimes_prefix=traveltimes_prefix,
             takeoffangles_template_path=takeoffangles_template_path,
             starting_delays_path=starting_delays_path)
 
@@ -110,22 +112,27 @@ class DatasetConfig(HasPaths):
         """
 
         err_msgs = []
-        for p in self.station_path_list:
+        for p in self.stations_paths:
             sta_path = self.expand_path(p, extra=None)
             err_msgs.append(self.check_path_exists(sta_path))
 
         if filter(None, err_msgs):
             raise FileNotFound("{}".format(', '.join(err_msgs)))
 
+        def filter_comments_emptystr(line):
+            if line and not line.startswith('#'):
+                return True
+            return False
+
         stations = []
-        for p in self.station_path_list:
+        for p in self.stations_paths:
             sta_path = self.expand_path(p, extra=None)
             logger.debug(
                 "Loading stations from file '{}'".format(sta_path))
 
             f = open(sta_path, 'r')
             lines = f.read().splitlines()
-            lines = filter(None, lines)
+            lines = filter(filter_comments_emptystr, lines)
             f.close()
 
             for line in lines:
@@ -487,21 +494,14 @@ class NLLocPhaseid(Object):
         return WSPACE.join(params)
 
 
-class ActivationFlag(Choice):
-    choices=[Bool.T(), Int.T()]
-
-
 class NLLocElevcorr(Object):
-    activation_flag = ActivationFlag.T()
+    apply_elevcorr = Bool.T()
     vel_p = Float.T(default=5.80, optional=True)
     vel_s = Float.T(default=3.46, optional=True)
 
-    def __init__(self, activation_flag, vel_p=None, vel_s=None):
-        Object.__init__(
-            self,
-            activation_flag=int(activation_flag > 0),
-            vel_p=vel_p or 5.80,
-            vel_s=vel_s or 3.46)
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self.activation_flag = int(self.apply_elevcorr)
 
     def __str__(self):
         params = [
@@ -512,14 +512,12 @@ class NLLocElevcorr(Object):
 
 
 class NLLocStawt(Object):
-    activation_flag = ActivationFlag.T()
+    apply_stawt = Bool.T()
     cutoff_dist = Float.T(default=-1.0, optional=True)
 
-    def __init__(self, activation_flag, cutoff_dist=None):
-        Object.__init__(
-            self,
-            activation_flag=int(activation_flag > 0),
-            cutoff_dist=cutoff_dist or -1.0)
+    def __init__(self, **kwargs):
+        Object.__init__(self, **kwargs)
+        self.activation_flag = int(self.apply_stawt)
 
     def __str__(self):
         params = ['LOCSTAWT', '{self.activation_flag}', '{self.cutoff_dist}']
@@ -820,8 +818,10 @@ class Config(HasPaths):
             setattr(obj, 'phase_map_rev', d_rev)
 
     def update_swapbytes_flag(self):
-        fn_grd = glob(self.expand_path(
-            self.dataset_config.traveltimes_path+'*.buf'))[0]
+        tt_path_prefix = pjoin(
+            self.dataset_config.traveltimes_path,
+            self.dataset_config.traveltimes_prefix)
+        fn_grd = glob(self.expand_path(tt_path_prefix +'*.buf'))[0]
         # we want to read the binary file in little-endian order
         sys_is_le = sys.byteorder == 'little'
         grd = read_nll_grid(fn_grd, swapbytes=(not sys_is_le))

@@ -24,12 +24,12 @@ logger = custom_logger(__name__)
 
 
 def dump_nlloc_obs_all(
-        bulletin_files, format, output_dir, events_path, prefix='',
+        bulletin_files, format, output_dir, output_events, prefix='',
         suffix='.nll', force=False, show_progress=False):
 
     if not force:
         warn_msgs = []
-        for path in (output_dir, events_path):
+        for path in (output_dir, output_events):
             if op.exists(path):
                 warn_msgs.append(path)
 
@@ -78,7 +78,7 @@ def dump_nlloc_obs_all(
         raise ScoterError('Bulletin files seem corrupt. No event is found')
 
     # Write pyrocko events file
-    dump_events(pyrocko_events, filename=events_path)
+    dump_events(pyrocko_events, filename=output_events)
 
 
 def _get_phase_defs(phase):

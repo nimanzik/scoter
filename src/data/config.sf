@@ -22,26 +22,27 @@ dataset_config: !gp.DatasetConfig
   events_path: 'data/events.pf'
 
   # Files with seismic phase pick observations. Given template path must
-  # include the placeholder '${event_name}'.
+  # contain the placeholder '${event_name}'.
   # (format -> NonLinLoc phase file, i.e. NLLOC_OBS)
   bulletins_template_path: 'data/phase/${event_name}.nll'
 
   # List of files with stations information (format -> column)
-  station_path_list:
+  stations_paths:
   - 'meta/stations.sf'
 
-  # Path and file root name (no extension) for input travel-time grid files
+  # Directory path and file prefix for input travel-time grid files
   # (format -> NonLinLoc 3D grid file)
-  traveltimes_path: 'time/fescan'
+  traveltimes_path: 'time'
+  traveltimes_prefix: 'fescan'
 
   # Files with pre-computed takeoff angles (SPTree interpolators) (optional).
-  # Given template path must include the placeholder '${phase_label}'
+  # Given template path must contain the placeholder '${phase_label}'
   # (format -> Pyrocko SPTree)
   takeoffangles_template_path:
 
   # File(s) with previously determined station correction terms (optional).
   # It can be either path to a single file containing static station terms, or
-  # a template path that includes the placeholder '${event_name}' and makes
+  # a template path that contains the placeholder '${event_name}' and makes
   # reference to multiple files containing source-specific station terms.
   # (format -> column)
   starting_delays_path:
@@ -228,13 +229,13 @@ nlloc_config: !gp.NLLocConfig
 
   elevcorr: !gp.NLLocElevcorr
     # Vertical ray elevation correction parameters (see LOCELEVCORR)
-    activation_flag: 1
+    apply_elevcorr: true
     vel_p: 5.80
     vel_s: 3.46
 
   stawt: !gp.NLLocStawt
     # Station distribution weighting parameters (see LOCSTAWT)
-    activation_flag: 1
+    apply_stawt: true
     cutoff_dist: -1.0
 
 # -----------------------------------------------------------------------------

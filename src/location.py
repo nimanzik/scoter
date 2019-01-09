@@ -121,7 +121,10 @@ def _nlloc_worker(itarget, config_id):
     obsfile = fp(config.dataset_config.bulletins_template_path)
     outroot = op.join(config.locdir, target.name)
     ttpath = config.expand_path(
-        config.dataset_config.traveltimes_path, extra=None)
+        op.join(
+            config.dataset_config.traveltimes_path,
+            config.dataset_config.traveltimes_prefix),
+        extra=None)
 
     fline = fline_template.substitute(
         obsfile=obsfile,

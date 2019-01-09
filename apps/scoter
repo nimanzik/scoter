@@ -186,7 +186,7 @@ def command_dump_obs(args):
             bulletin_files,
             args.format,
             args.output_dir,
-            args.events_path,
+            args.output_events,
             delimiter_str=DELIMITER_STR,
             prefix=args.prefix,
             suffix=args.suffix,
@@ -213,10 +213,10 @@ named_dump_obs.add_argument(
 named_dump_obs.add_argument(
     '--output-dir', dest='output_dir', required=True, metavar='DIR',
     help='set output directory to DIR to save NonLinLoc phase files '
-         '(NLLOC_OBS.')
+         '(NLLOC_OBS).')
 
 named_dump_obs.add_argument(
-    '--events-path', '--event-path', dest='events_path', required=True,
+    '--output-events', dest='output_events', required=True,
     metavar='FILENAME', help='write pyrocko events to FILENAME.')
 
 # Optional args
