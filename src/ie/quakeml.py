@@ -568,7 +568,7 @@ class Origin(Object):
         return model.Event(
             lat=self.latitude.value,
             lon=self.longitude.value,
-            depth=self.depth.value,
+            depth=getattr(self.depth, 'value', None),
             time=self.time.value,
             region=self.region,
             catalog=catalog)
