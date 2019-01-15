@@ -206,9 +206,10 @@ parser_dump_obs.add_argument('bulletin-files', help=argparse.SUPPRESS)
 named_dump_obs = parser_dump_obs.add_argument_group('required named arguments')
 
 named_dump_obs.add_argument(
-    '--format', required=True, metavar='FORMAT', choices=('QuakeML', 'Geofon'),
-    help='assume input files are of given FORMAT. Choices: "QuakeML", '
-         '"Geofon".')
+    '--format', required=True, metavar='FORMAT', choices=('QuakeML', 'SC3'),
+    help='assume input files are of given FORMAT. Choices: '
+         '"QuakeML" (XML-based data exchange format), "SC3" (SeisComp3 '
+         'ascii file format).')
 
 named_dump_obs.add_argument(
     '--output-dir', dest='output_dir', required=True, metavar='DIR',

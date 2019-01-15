@@ -24,7 +24,7 @@ logger = custom_logger(__name__)
 
 
 def dump_nlloc_obs_all(
-        bulletin_files, format, output_dir, output_events, prefix='',
+        bulletin_files, fmt, output_dir, output_events, prefix='',
         suffix='.nll', force=False, show_progress=False):
 
     if not force:
@@ -37,10 +37,10 @@ def dump_nlloc_obs_all(
             raise PathAlreadyExists('file/dir already exists: "{}"'.format(
                 ', '.join(warn_msgs)))
 
-    fmt = format.lower()
-    if fmt == 'geofon':
+    fmt_l = fmt.lower()
+    if fmt_l == 'sc3':
         loader = load_geofon_hyp
-    elif fmt == 'quakeml':
+    elif fmt_l == 'quakeml':
         loader = QuakeML.load_xml
     else:
         raise ScoterError('unsupported file format: "{}"'.format(fmt))
