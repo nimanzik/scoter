@@ -7,7 +7,7 @@ from pyrocko.model import Station as PyrockoStation
 from pyrocko.guts import Choice, Float, Int, List, Object, String
 
 
-guts_prefix = 'gp'
+guts_prefix = 'scoter'
 
 KM2M = 1000.
 M2KM = 1. / KM2M

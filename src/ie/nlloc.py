@@ -16,7 +16,7 @@ from .quakeml import Arrival, ConfidenceEllipsoid, Event, EventParameters,\
     TimeQuantity, WaveformStreamID, QuakeML
 
 
-guts_prefix = 'gp'
+guts_prefix = 'scoter'
 
 KM2M = 1000.
 M2KM = 1. / KM2M

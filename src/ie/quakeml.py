@@ -9,7 +9,7 @@ from pyrocko.guts import StringPattern, StringChoice, String, Float, Int,\
 from ..log_util import custom_logger
 
 
-guts_prefix = 'gp'
+guts_prefix = 'scoter'
 guts_xmlns = 'http://quakeml.org/xmlns/bed/1.2'
 
 # Set logger

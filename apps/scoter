@@ -48,22 +48,23 @@ subcommand_descriptions = {
 
 subcommand_usages = {
     'init': 'init <filename> [options]',
-    'dump-obs': 'dump-obs <bulletin-files> --format=<format> '
-                '--output-dir=<dir> --events-path=<filename> [options]',
+    'dump-obs': 'dump-obs <bulletin-files> <--format=FORMAT> '
+                '<--output-dir=DIR> <--events-path=FILENAME> [options]',
     'list-steps': 'list-steps [options]',
-    'go': 'go <configfile> --steps=<steps> [options]',
+    'go': 'go <configfile> <--steps=STEPS> [options]',
     'harvest': 'harvest <rundir> [options]',
-    'export-events': 'export-events <rundir> --step=<step> [options]',
-    'export-residuals': 'export-residuals <rundir> --station=<station> '
-                        '--phase=<phase> [--output=<filename>]',
-    'export-static': 'export-static <rundir> [--output=<filename>]',
-    'export-ssst': 'export-ssst <rundir> --station=<station> '
-                   '--phase=<phase> [--output=<filename>]',
-    'plot-convergence': 'plot-convergence <rundir> --step=<B|C> [options]',
-    'plot-residuals': 'plot-residuals <rundir> --steps=<steps> '
-                      '--phase=<phase> '
-                      '--distances=<dist_min:dist_max:dist_bin_width> '
-                      '--residuals=<res_min:res_max:res_bin_width> [options]'}
+    'export-events': 'export-events <rundir> <--step=STEP> [options]',
+    'export-residuals': 'export-residuals <rundir> <--phase=PHASE> '
+                        '<--station=STACODE> [--network=NETCODE] '
+                        '[--output=FILENAME]',
+    'export-static': 'export-static <rundir> [--output=FILENAME]',
+    'export-ssst': 'export-ssst <rundir> <--phase=PHASE> <--station=STACODE> '
+                   '[--network=NETCODE] [--output=<filename>]',
+    'plot-convergence': 'plot-convergence <rundir> <--step=B|C> [options]',
+    'plot-residuals': 'plot-residuals <rundir> <--steps=STEPS> '
+                      '<--phase=PHASE> '
+                      '<--distances=DIST_MIN:DIST_MAX:BIN_WIDTH> '
+                      '<--residuals=RES_MIN:RES_MAX:BIN_WIDTH> [options]'}
 
 
 subcommand = subcommand_descriptions.keys()
@@ -213,8 +214,8 @@ named_dump_obs.add_argument(
 
 named_dump_obs.add_argument(
     '--output-dir', dest='output_dir', required=True, metavar='DIR',
-    help='set output directory to DIR to save NonLinLoc phase files '
-         '(NLLOC_OBS).')
+    help='set output directory to DIR to save phase files in '
+         'NLLOC_OBS format.')
 
 named_dump_obs.add_argument(
     '--output-events', dest='output_events', required=True,
@@ -547,24 +548,24 @@ named_plot_res.add_argument(
     help='plot travel-time residuals heat-map for given PHASELABEL.')
 
 named_plot_res.add_argument(
-    '--distances', required=True, metavar='dist_min:dist_max:dist_bin_width',
+    '--distances', required=True, metavar='dist_min:dist_max:bin_width',
     help='distance range and bins width in either [deg] (GLOBAL mode) or '
          '[km] (Non-GLOBAL mode).')
 
 named_plot_res.add_argument(
-    '--residuals', required=True, metavar='res_min:res_max:res_bin_width',
+    '--residuals', required=True, metavar='res_min:res_max:bin_width',
     help='residual range and bin width in [sec].')
 
 # Optional args
 parser_plot_res.add_argument(
     '--interpolation', default='nearest',
     help='one of matplotlib.pyplot.imshow acceptable values for '
-         'interpolation (default: nearest)')
+         'interpolation (default: nearest).')
 
 parser_plot_res.add_argument(
     '--cmap', default='plasma',
     help='one of matplotlib.pyplot.imshow acceptable values for cmap '
-         '(default: plasma)')
+         '(default: plasma).')
 
 parser_plot_res.add_argument(
     '--save', action='store_true', default=False, help='save figure to file.')

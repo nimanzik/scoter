@@ -98,7 +98,6 @@ class ColoredFormatter(logging.Formatter):
     def __init__(
             self, fmt=None, datefmt=None, log_colors=None, time_color=None):
         logging.Formatter.__init__(self, fmt, datefmt)
-
         self.log_colors = log_colors or DEFAULT_LOG_COLORS
         self.time_color = time_color or 'normal'
         self.normal = True

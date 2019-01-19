@@ -32,7 +32,7 @@ from .meta import expand_template, HasPaths, FileNotFound, Path, PhaseLabel,\
     Station, Target, ScoterError
 
 
-guts_prefix = 'gp'
+guts_prefix = 'scoter'
 
 WSPACE = ''.ljust(1)
 HYP_FILE_EXTENSION = '.loc.hyp'

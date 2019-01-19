@@ -10,7 +10,7 @@ from .quakeml import Arrival, Event, EventParameters, Origin, OriginQuality,\
     Pick, Phase, RealQuantity, TimeQuantity, WaveformStreamID, QuakeML
 
 
-guts_prefix = 'gp'
+guts_prefix = 'scoter'
 
 KM2M = 1000.
 

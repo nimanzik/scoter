@@ -1,11 +1,11 @@
 %YAML 1.1
---- !gp.Config
+--- !scoter.Config
 
 # All dataset file paths (input data) referenced below are treated relative to
 # the location of this configuration file. Here we may give a common prefix,
 # e.g. setting it to '..' if the configuration file is in the sub-directory
-# '<our_project_root>/config'. This allows SCOTER to give the paths below
-# relative to '<our_project_root>'.
+# '<project_dir>/config'. This allows SCOTER to give the paths below relative
+# to '<project_dir>'.
 path_prefix: '..'
 
 # Path, where to store output files (run directories)
@@ -15,7 +15,7 @@ rundir: './out'
 # Configuration section for dataset (input data)
 # -----------------------------------------------------------------------------
 
-dataset_config: !gp.DatasetConfig
+dataset_config: !scoter.DatasetConfig
 
   # File with hypocenter information and possibly reference solution.
   # (format -> Pyrocko events)
@@ -51,10 +51,10 @@ dataset_config: !gp.DatasetConfig
 # Configuration section for station terms
 # -----------------------------------------------------------------------------
 
-station_terms_config: !gp.StationTermsConfig
+station_terms_config: !scoter.StationTermsConfig
 
   # Subsection on static station terms (STATIC)
-  static_config: !gp.StaticConfig
+  static_config: !scoter.StaticConfig
 
     # Number of iterations for static station terms
     niter: 0
@@ -67,7 +67,7 @@ station_terms_config: !gp.StationTermsConfig
     nresiduals_min: 5
 
   # Subsection on source-specific station terms (SSST)
-  ssst_config: !gp.SourceSpecificConfig
+  ssst_config: !scoter.SourceSpecificConfig
 
     # Number of iterations for source-specific station terms
     niter: 20
@@ -76,13 +76,13 @@ station_terms_config: !gp.StationTermsConfig
     phase_list: ['P1', 'P', 'S1', 'S']
 
     # Starting distance cutoff in [m] for SSST computation
-    start_cutoff_dist: 500000.0
+    start_cutoff_dist: 500e3
 
     # Starting maximum number of nearby events for SSST computation
     start_nlinks_max: 1000
 
     # Ending distance cutoff in [m] for SSST computation
-    end_cutoff_dist: 50000.0
+    end_cutoff_dist: 50e3
 
     # Ending maximum number of nearby events for SSST computation
     end_nlinks_max: 1000
@@ -96,7 +96,7 @@ station_terms_config: !gp.StationTermsConfig
     ndelays_min: 2
 
   # Subsection on weighting and re-weighting schemes
-  weight_config: !gp.WeightConfig
+  weight_config: !scoter.WeightConfig
 
     # How to weight nearby events located around a target event. This option
     # is valid only for SSST computation. (available choices are 'uniform',
@@ -119,10 +119,10 @@ station_terms_config: !gp.StationTermsConfig
     outlier_rejection_level: 6
 
   # Subsection on location quality control
-  locqual_config: !gp.LocationQualityConfig
+  locqual_config: !scoter.LocationQualityConfig
 
-    # Events with low-quality locations (i.e. do not satisfy one or more of the
-    # following conditions) are not used in station terms calculation.
+    # Events with low-quality locations (i.e. do not satisfy one or more of
+    # the following conditions) are not used in station terms calculation.
 
     # Maximum location RMS in [s]
     standard_error_max: 3.0
@@ -132,13 +132,13 @@ station_terms_config: !gp.StationTermsConfig
 
     # Maximum semi-major axis of the confidence ellipsoid in [m]
     # (corresponding to the largest location uncertainty).
-    largest_uncertainty_max: 111319.5
+    largest_uncertainty_max: 111.3195e3
 
 # -----------------------------------------------------------------------------
 # Configuration section for station network selection
 # -----------------------------------------------------------------------------
 
-network_config: !gp.NetworkConfig
+network_config: !scoter.NetworkConfig
 
   # Whether to select (filter) station data based on epicentral (surface)
   # distances. The distances are calculated based on the initial locations
@@ -156,16 +156,16 @@ network_config: !gp.NetworkConfig
 # (for descriptions see NonLinLoc documentation)
 # -----------------------------------------------------------------------------
 
-nlloc_config: !gp.NLLocConfig
+nlloc_config: !scoter.NLLocConfig
 
-  trans: !gp.NLLocTrans
+  trans: !scoter.NLLocTrans
     # Geographic transformation parameters (see TRANS)
     # NOTE - if `trans_type` is 'SIMPLE' or 'LAMBERT', you need to set
     # some more parameters, named as `lat_orig`, `lon_orig`, `rot_angle`,
     # `ref_ellips`, `first_paral`, `second_paral`.
     trans_type: 'GLOBAL'
 
-  grid: !gp.NLLocGrid
+  grid: !scoter.NLLocGrid
     # 3D search grid parameters (see LOCGRID)
     x_num: 21
     y_num: 16
@@ -178,7 +178,7 @@ nlloc_config: !gp.NLLocConfig
     dz: 1.0
     grid_type: 'PROB_DENSITY'
 
-  search: !gp.NLLocSearchOcttree
+  search: !scoter.NLLocSearchOcttree
     # Oct-tree search type parameters (see LOCSEARCH)
     init_num_cells_x: 160
     init_num_cells_y: 15
@@ -189,7 +189,7 @@ nlloc_config: !gp.NLLocConfig
     use_sta_density: 0
     stop_on_what: 0
 
-  meth: !gp.NLLocMeth
+  meth: !scoter.NLLocMeth
     # Location method (algorithm) parameters (see LOCMETH)
     method: 'EDT_OT_WT'
     max_dist_sta_grid: 100000.0
@@ -201,12 +201,12 @@ nlloc_config: !gp.NLLocConfig
     min_dist_sta_grid: -1.0
     reject_duplicate_arrivals: 1
 
-  gau: !gp.NLLocGau
+  gau: !scoter.NLLocGau
     # Gaussian model errors parameters (see LOCGAU)
     sigma_time: 0.5
     corr_len: 0.0
 
-  gau2: !gp.NLLocGau2
+  gau2: !scoter.NLLocGau2
     # Travel-time dependent model errors parameters (see LOCGAU2)
     sigma_tfraction: 0.01
     sigma_tmin: 0.05
@@ -215,25 +215,25 @@ nlloc_config: !gp.NLLocConfig
   phaseid_list:
   # List of phase identifier mapping (see LOCPHASEID)
     # subsection for pP phase
-  - !gp.NLLocPhaseid
+  - !scoter.NLLocPhaseid
     std_phase: 'pP'
     phase_code_list: ['pP', 'pwP']
     # subsection for P phase
-  - !gp.NLLocPhaseid
+  - !scoter.NLLocPhaseid
     std_phase: 'P'
     phase_code_list: ['P', 'p', 'PN', 'PG']
-  - !gp.NLLocPhaseid
+  - !scoter.NLLocPhaseid
     # subsection for S phase
     std_phase: 'S'
     phase_code_list: ['S', 's', 'SN', 'SG']
 
-  elevcorr: !gp.NLLocElevcorr
+  elevcorr: !scoter.NLLocElevcorr
     # Vertical ray elevation correction parameters (see LOCELEVCORR)
     apply_elevcorr: true
     vel_p: 5.80
     vel_s: 3.46
 
-  stawt: !gp.NLLocStawt
+  stawt: !scoter.NLLocStawt
     # Station distribution weighting parameters (see LOCSTAWT)
     apply_stawt: true
     cutoff_dist: -1.0
