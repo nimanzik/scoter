@@ -6,6 +6,8 @@ import glob
 import logging
 import sys
 
+from pyrocko.util import ensuredirs
+
 from scoter.core import read_config, go
 from scoter.log_util import custom_logger
 from scoter.meta import FileNotFound, PathAlreadyExists, ScoterError
@@ -47,7 +49,7 @@ subcommand_descriptions = {
 
 
 subcommand_usages = {
-    'init': 'init <filename> [options]',
+    'init': 'init <filename>',
     'dump-obs': 'dump-obs <bulletin-files> <--format=FORMAT> '
                 '<--output-dir=DIR> <--events-path=FILENAME> [options]',
     'list-steps': 'list-steps [options]',
@@ -158,6 +160,8 @@ def create_subcommand_parser(subcommand, common_opts=True):
 def command_init(args):
     fn = data_file('config.sf')
     s = open(fn, 'r').read()
+
+    ensuredires(args.filename)
 
     with open(args.filename, 'w') as f:
         f.write(s)
