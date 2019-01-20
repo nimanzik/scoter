@@ -161,7 +161,7 @@ def command_init(args):
     fn = data_file('config.sf')
     s = open(fn, 'r').read()
 
-    ensuredires(args.filename)
+    ensuredirs(args.filename)
 
     with open(args.filename, 'w') as f:
         f.write(s)
