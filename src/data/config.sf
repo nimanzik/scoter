@@ -192,13 +192,13 @@ nlloc_config: !scoter.NLLocConfig
   meth: !scoter.NLLocMeth
     # Location method (algorithm) parameters (see LOCMETH)
     method: 'EDT_OT_WT'
-    max_dist_sta_grid: 100000.0
+    min_dist_sta_grid: -1.0
+    max_dist_sta_grid: 1e6
     min_num_phases: 6
     max_num_phases: 100
     min_num_Sphases: -1
     vp_vs_ratio: -1.7
     max_num_3dgrid_mem: -1
-    min_dist_sta_grid: -1.0
     reject_duplicate_arrivals: 1
 
   gau: !scoter.NLLocGau

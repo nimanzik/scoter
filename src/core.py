@@ -495,7 +495,7 @@ class NLLocPhaseid(Object):
 
 
 class NLLocElevcorr(Object):
-    apply_elevcorr = Bool.T()
+    apply_elevcorr = Bool.T(default=False)
     vel_p = Float.T(default=5.80, optional=True)
     vel_s = Float.T(default=3.46, optional=True)
 
@@ -512,7 +512,7 @@ class NLLocElevcorr(Object):
 
 
 class NLLocStawt(Object):
-    apply_stawt = Bool.T()
+    apply_stawt = Bool.T(default=False)
     cutoff_dist = Float.T(default=-1.0, optional=True)
 
     def __init__(self, **kwargs):
