@@ -6,7 +6,7 @@ among nearby seismic events.
 
 ## Citation
 
-The recommended citation for SCOTER is::
+The recommended citation for SCOTER is:
 
 >  Nooshiri, Nima; Heimann, Sebastian; Tilmann, Frederik; Dahm, Torsten; Saul, Joachim (2019): SCOTER - Software package for multiple-earthquake relocation by using static and source-specific station correction terms. V. 0.1. GFZ Data Services.
 
@@ -34,6 +34,28 @@ this program. If not, see <http://www.gnu.org/licenses/>.
 ```
 GFZ German Research Centre for Geosciences
 Section 2.1: Physics of Earthquakes and Volcanoes
-Helmholtzstraße 6/7
+Helmholtzstr. 6/7
 14467 Potsdam, Germany
 ```
+
+## Download and Installation
+
+1. Install [Pyrocko](https://pyrocko.org/):
+    See Pyrocko installation page [here](https://pyrocko.org/docs/current/install/).
+
+2. Install NonLinLoc:
+    See NonLinLoc repository that is modified and packaged as SCOTER backend [here](https://gitext.gfz-potsdam.de/nooshiri/scoter-nonlinloc.git).
+
+3. Install SCOTER and the rest of dependencies:
+
+    ```bash
+    cd ~/src/   # or wherever you keep your source packages
+    git clone https://gitext.gfz-potsdam.de/nooshiri/scoter.git
+    cd scoter
+    sudo python setup.py install
+    ```
+
+## Documentation
+
+The SCOTER download includes a users guide, including examples that describes
+rudimentary usage. Input and output file formats are specified.
