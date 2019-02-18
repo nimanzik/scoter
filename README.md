@@ -8,7 +8,9 @@ among nearby seismic events.
 
 The recommended citation for SCOTER is:
 
->  Nooshiri, Nima; Heimann, Sebastian; Tilmann, Frederik; Dahm, Torsten; Saul, Joachim (2019): SCOTER - Software package for multiple-earthquake relocation by using static and source-specific station correction terms. V. 0.1. GFZ Data Services.
+>  Nooshiri, Nima; Heimann, Sebastian; Tilmann, Frederik; Dahm, Torsten; Saul, 
+Joachim (2019): SCOTER - Software package for multiple-earthquake relocation by 
+using static and source-specific station correction terms. V. 0.1. GFZ Data Services. http://doi.org/10.5880/GFZ.2.1.2019.002
 
 [![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2019.002-blue.svg)](http://doi.org/10.5880/GFZ.2.1.2019.002)
 
