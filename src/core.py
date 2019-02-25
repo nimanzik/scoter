@@ -628,7 +628,6 @@ class Config(HasPaths):
         self._show_progress = None
         self.update_phase_maps()
         self.update_phase_maps_rev()
-        self.update_swapbytes_flag()
 
     @property
     def stations(self):
@@ -771,7 +770,8 @@ class Config(HasPaths):
             setattr(obj, 'phase_map_rev', d_rev)
 
     def update_swapbytes_flag(self):
-        fn_grd = glob(self.dataset_config.traveltimes_path+'*.buf')[0]
+        fn_grd = glob(self.expand_path(
+            self.dataset_config.traveltimes_path+'*.buf'))[0]
         # we want to read the binary file in little-endian order
         sys_is_le = sys.byteorder == 'little'
         grd = read_nll_grid(fn_grd, swapbytes=(not sys_is_le))

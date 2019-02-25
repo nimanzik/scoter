@@ -66,6 +66,9 @@ def nlloc_runner(config, keep_scat=False, raise_exception=False):
     ntargets = len(config.targets)
     task_list = zip(xrange(ntargets), [id(config)]*ntargets)
 
+    # Set the swap-bytes flag
+    config.update_swapbytes_flag()
+
     # Run the processes.
     ensuredir(config.locdir)
 
