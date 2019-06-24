@@ -37,6 +37,7 @@ guts_prefix = 'scoter'
 WSPACE = ''.ljust(1)
 HYP_FILE_EXTENSION = '.loc.hyp'
 DELIMITER_STR = '.'
+EMPTY_STR = ''
 
 # Named location steps
 NAMED_STEPS = {
@@ -140,9 +141,12 @@ class DatasetConfig(HasPaths):
                 try:
                     net = items[-5].strip()
                 except IndexError:
-                    net = ''.strip()
+                    net = EMPTY_STR
                 sta = items[-4].strip()
 
+                # Create the station label (name) from the 1st two columns.
+                # Joining 'net' and 'sta' may returns '.sta' when 'net' is
+                # not indicated in the file!
                 slabel = DELIMITER_STR.join(items[-5:-3])
 
                 lat, lon, elev = map(float, items[-3:])
@@ -218,12 +222,11 @@ class LocationQualityConfig(Object):
         u = o.origin_uncertainty_list[0]
         c = u.confidence_ellipsoid
 
-        if (q.standard_error > self.standard_error_max or
-                q.secondary_azimuthal_gap > self.secondary_azigap_max or
+        if (q.standard_error > self.standard_error_max and
+                q.secondary_azimuthal_gap > self.secondary_azigap_max and
                 c.semi_major_axis_length > self.largest_uncertainty_max):
-            # Low quality location.
+            # It's an event with low-quality location
             return True
-
         return False
 
 
@@ -908,14 +911,6 @@ class ScoterRunner(object):
                     "SCOTER skips this step since it found no station terms")
                 break
 
-            # stream = ''
-            # for delay in new_delays:
-            #     stream += '{}\n'.format(delay)
-
-            # fn_delays = pjoin(static_dir, '{:02}_1_delay'.format(iiter+1))
-            # with open(fn_delays, 'w') as f:
-            #     f.write(stream)
-
             fn = pjoin(
                 static_dir, '{iiter:0{strlen:d}d}_1_delay.pickle'.format(
                     iiter=iiter+1, strlen=strlen))
@@ -957,15 +952,6 @@ class ScoterRunner(object):
 
             # --- Step 1: get source-specific station terms. ---
             new_targets = calc_ssst(self.config, iiter)
-
-            # dn = pjoin(ssst_dir, '{:02}_1_delay'.format(iiter+1))
-            # ensuredir(dn)
-            # fn_temp = pjoin(dn, '%(event_name)s.scoter')
-            # for target in new_targets:
-            #     fn = fn_temp % dict(event_name=target.name)
-            #     with open(fn, 'w') as f:
-            #         for delay in target.station_delays:
-            #             f.write('{}\n'.format(delay))
 
             new_delays = dict((x.name, x.station_delays) for x in new_targets)
             fn = pjoin(

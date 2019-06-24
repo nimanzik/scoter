@@ -176,7 +176,7 @@ nlloc_config: !scoter.NLLocConfig
     dx: 1.0
     dy: 1.0
     dz: 1.0
-    grid_type: 'PROB_DENSITY'
+    grid_type: 'MISFIT'
 
   search: !scoter.NLLocSearchOcttree
     # Oct-tree search type parameters (see LOCSEARCH)

@@ -214,4 +214,5 @@ __all__ = """
     biweight
     bisquared
     bicubic
+    robust_average
 """.split()
