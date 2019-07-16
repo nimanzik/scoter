@@ -19,8 +19,6 @@ from scoter.util import data_file
 
 progname = 'scoter'
 
-DELIMITER_STR = '.'
-
 # Create logger
 logger = custom_logger(name=progname)
 
@@ -192,7 +190,6 @@ def command_dump_obs(args):
             args.format,
             args.output_dir,
             args.output_events,
-            delimiter_str=DELIMITER_STR,
             prefix=args.prefix,
             suffix=args.suffix,
             force=args.force,

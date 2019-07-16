@@ -476,16 +476,16 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
 
     for pick in sorted(event.pick_list, key=lambda x: x.time.value):
 
-        arvl = arvl_maps[pick.public_id]
+        arvl = arvl_maps.get(pick.public_id, None)
 
         # if arvl.time_weight is None and arvl.time_used is None:
         #     continue
 
-        if arvl.time_weight == 0.0 or arvl.time_used == 0:
+        if arvl and (arvl.time_weight == 0.0 or arvl.time_used == 0):
             continue
 
         wid = pick.waveform_id
-        if delimiter_str:
+        if wid.network_code and delimiter_str:
             slabel = delimiter_str.join([wid.network_code, wid.station_code])
         else:
             slabel = wid.network_code + wid.station_code
@@ -493,7 +493,7 @@ def dump_nlloc_obs(event, filename, delimiter_str=None):
         comp = wid.channel_code and wid.channel_code[-1].upper() or '?'
         onset = ONSETS_DUMP.get(pick.onset, '?')
 
-        pha = arvl.phase.code or '?'
+        pha = pick.phase_hint.code or '?'
 
         pol = POLARITIES_DUMP.get(pick.polarity, '?')
         time_str = time_to_str(pick.time.value, format='%Y%m%d %H%M %S.4FRAC')
@@ -613,7 +613,7 @@ def dump_nlloc_sta(
 
     with open(filename, 'w') as ofile:
         for s in stations:
-            if delimiter_str:
+            if s.network and delimiter_str:
                 slabel = delimiter_str.join((s.network, s.station))
             else:
                 slabel = s.network + s.station

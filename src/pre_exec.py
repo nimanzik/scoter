@@ -34,8 +34,9 @@ def dump_nlloc_obs_all(
                 warn_msgs.append(path)
 
         if warn_msgs:
-            raise PathAlreadyExists('file/dir already exists: "{}"'.format(
-                ', '.join(warn_msgs)))
+            raise PathAlreadyExists(
+                'file/directory already exists: "{}"'.format(
+                    ', '.join(warn_msgs)))
 
     fmt_l = fmt.lower()
     if fmt_l == 'sc3':
@@ -104,8 +105,8 @@ def _get_phase_defs(phase):
 
 
 def build_takeoffangles_sptree(
-        model, phase, z_range, x_range, z_tol=1.*KM2M, x_tol=0.1, a_tol=0.01,
-        filename=None):
+        model, phase, z_range, x_range, z_tol=1.0*KM2M, x_tol=1.0*KM2M,
+        a_tol=0.01, filename=None):
     '''
     Creat a :py:class:`pyrocko.spit.SPTree` interpolator to interpolate
     and query first-arriving P or S waves takeoff angles.
@@ -131,7 +132,7 @@ def build_takeoffangles_sptree(
         `:py:class:pyrocko.split.SPTree`.
 
     x_tol : float
-        Distance tolerance threshold in [deg] defining the accuracy of
+        Distance tolerance threshold in [m] defining the accuracy of
         the `:py:class:pyrocko.split.SPTree`.
 
     a_tol : float
