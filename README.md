@@ -1,4 +1,8 @@
 # SCOTER
+
+[![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2019.002-blue.svg)](http://doi.org/10.5880/GFZ.2.1.2019.002)
+[![](https://img.shields.io/badge/licence-GPL--3.0-orange)](LICENSE)
+
 **SCOTER** implements static and shrinking-box source-specific station terms
 (SSST) techniques to reduce the effect of spatially correlated residuals
 caused by 3-D velocity structure and improve the relative location accuracy
@@ -11,8 +15,6 @@ The recommended citation for SCOTER is:
 >  Nooshiri, Nima; Heimann, Sebastian; Tilmann, Frederik; Dahm, Torsten; Saul, 
 Joachim (2019): SCOTER - Software package for multiple-earthquake relocation by 
 using static and source-specific station correction terms. V. 0.1. GFZ Data Services. http://doi.org/10.5880/GFZ.2.1.2019.002
-
-[![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2019.002-blue.svg)](http://doi.org/10.5880/GFZ.2.1.2019.002)
 
 ## License
 
