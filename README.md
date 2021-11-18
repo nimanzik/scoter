@@ -59,6 +59,12 @@ Helmholtzstr. 6/7
     sudo python setup.py install
     ```
 
+## SCOTER Overview Poster (EGU 2018)
+
+<p align="center">
+  <img src="images/Nooshiri_EGU2018_15263.png" width="1200" />
+</p>
+
 ## Documentation
 
 The SCOTER download includes a users guide, including examples that describes
