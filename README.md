@@ -2,6 +2,7 @@
 
 [![DOI](https://img.shields.io/badge/DOI-10.5880%2FGFZ.2.1.2019.002-blue.svg)](http://doi.org/10.5880/GFZ.2.1.2019.002)
 [![](https://img.shields.io/badge/licence-GPL--3.0-orange)](LICENSE)
+[![](https://img.shields.io/badge/python-2.7-blue)](https://docs.python.org/2.7/)
 
 **SCOTER** implements static and shrinking-box source-specific station terms
 (SSST) techniques to reduce the effect of spatially correlated residuals
@@ -62,7 +63,7 @@ Helmholtzstr. 6/7
 ## SCOTER Overview Poster (EGU 2018)
 
 <p align="center">
-  <img src="images/Nooshiri_EGU2018_15263.png" width="1200" />
+  <img src="images/Nooshiri_EGU2018_15263.png" width="1100" />
 </p>
 
 ## Documentation
